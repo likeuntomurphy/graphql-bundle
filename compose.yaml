@@ -1,6 +1,7 @@
 services:
   php:
-    image: php:8.5-cli-alpine
+    build: .
+    image: graphql-bundle:ci
     working_dir: /app
     volumes:
       - .:/app
