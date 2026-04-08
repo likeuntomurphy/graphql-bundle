@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
+  graphql.type.DateTime:
+    alias: 'Likeuntomurphy\GraphQL\Type\DateTime'
+    public: true
+
+  graphql.type.DateTimeImmutable:
+    alias: 'Likeuntomurphy\GraphQL\Type\DateTime'
+    public: true
+
+  Likeuntomurphy\GraphQL\Resolver\Field\DefaultFieldResolverInterface:
+    alias: 'Likeuntomurphy\GraphQL\DefaultFieldResolver'
+
+  Likeuntomurphy\GraphQL\Resolver\Field\NodeIdCodecInterface:
+    alias: 'Likeuntomurphy\GraphQL\Resolver\Field\Base64NodeIdCodec'
+
+  Likeuntomurphy\GraphQL\:
+    resource: '../src/'
+    exclude:
+        - '../src/{DependencyInjection,Exception,Model,Pagination,Repository}/'
+        - '../src/LikeuntomurphyGraphQLBundle.php'
+        - '../src/Resolver/Field/{Connection,Mutation,NestedConnection}FieldHandler.php'
+
+  Likeuntomurphy\GraphQL\Type\:
+    resource: '../src/Type/'
+    public: true
+    tags:
+      - !php/const Likeuntomurphy\GraphQL\TypeRegistry::TAG
+
+  GraphQL\Type\SchemaConfig:
+    factory:
+      - '@Likeuntomurphy\GraphQL\SchemaConfigBuilder'
+      - 'build'
+
+  GraphQL\Type\Schema:
+    arguments:
+      - '@GraphQL\Type\SchemaConfig'

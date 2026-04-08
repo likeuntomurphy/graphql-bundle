@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
+
+use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
+
+class InvalidManager implements GlobalObjectManagerInterface
+{
+    public static function getManagedGlobalObject(): string
+    {
+        return 'App\Document\NonExistent'; // @phpstan-ignore return.type
+    }
+
+    public static function getManagedDataTransferObject(): string
+    {
+        return 'App\Dto\NonExistent'; // @phpstan-ignore return.type
+    }
+}
