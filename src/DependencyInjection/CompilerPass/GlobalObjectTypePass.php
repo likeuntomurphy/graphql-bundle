@@ -6,6 +6,7 @@ namespace Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\ObjectType;
 use Likeuntomurphy\GraphQL\Attribute\AsConnection;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\Exception\InvalidGlobalObjectException;
@@ -44,44 +45,39 @@ class GlobalObjectTypePass implements CompilerPassInterface
         $classMap = [];
         $connectionFieldMap = $this->buildConnectionFieldMap($container);
 
-        foreach ($container->findTaggedServiceIds(GlobalObjectManagerInterface::TAG) as $serviceId => $_) {
+        foreach ($this->discoverEntities($container) as $entityClass => [$entityRc, $managerClass]) {
             try {
-                /** @var class-string<GlobalObjectManagerInterface> $managerClass */
-                $managerClass = $container->getDefinition($serviceId)->getClass() ?? $serviceId;
-
-                $rc = new \ReflectionClass($managerClass::getManagedGlobalObject());
-
-                $typeName = $rc->getShortName();
+                $typeName = $entityRc->getShortName();
 
                 if (isset($classMap[$typeName])) {
-                    throw new TypeNameCollisionException($typeName, $classMap[$typeName], $rc->getName());
+                    throw new TypeNameCollisionException($typeName, $classMap[$typeName], $entityClass);
                 }
 
-                $classMap[$typeName] = $rc->getName();
+                $classMap[$typeName] = $entityClass;
 
-                $managerDefinition = $container->getDefinition($serviceId);
-                $managerDefinition->addTag(GlobalObjectManagerInterface::TAG, ['key' => $rc->getShortName()]);
+                $managerDefinition = $container->findDefinition($managerClass);
+                $managerDefinition->addTag(GlobalObjectManagerInterface::TAG, ['key' => $typeName]);
 
                 foreach (self::NARROW_TAGS as $interface => $tag) {
                     if (is_subclass_of($managerClass, $interface)) {
-                        $managerDefinition->addTag($tag, ['key' => $rc->getShortName()]);
+                        $managerDefinition->addTag($tag, ['key' => $typeName]);
                     }
                 }
 
                 $skipFields = $connectionFieldMap[$typeName] ?? [];
 
                 $config = [
-                    'name' => $rc->getShortName(),
+                    'name' => $typeName,
                     'interfaces' => [new Reference(NodeInterface::class)],
-                    'fields' => ['id' => new Reference(NodeId::class)] + $this->resolveObjectFields($rc, $container, $this->ensureLocalObjectType(...), skipId: true, skipFields: $skipFields),
+                    'fields' => ['id' => new Reference(NodeId::class)] + $this->resolveObjectFields($entityRc, $container, $this->ensureLocalObjectType(...), skipId: true, skipFields: $skipFields),
                 ];
 
-                $definitions[TypeRegistry::TAG.'.'.$rc->getShortName()] = new Definition(ObjectType::class, [$config])
+                $definitions[TypeRegistry::TAG.'.'.$typeName] = new Definition(ObjectType::class, [$config])
                     ->setPublic(true)
-                    ->addTag(TypeRegistry::TAG, ['name' => $config['name']])
+                    ->addTag(TypeRegistry::TAG, ['name' => $typeName])
                 ;
             } catch (\ReflectionException $e) {
-                throw new InvalidGlobalObjectException($serviceId, $e);
+                throw new InvalidGlobalObjectException($entityClass, $e);
             }
         }
 
@@ -96,6 +92,30 @@ class GlobalObjectTypePass implements CompilerPassInterface
     }
 
     /**
+     * Iterate resource-tagged entities, yielding [ReflectionClass, managerClass] per entity class.
+     *
+     * @return iterable<string, array{\ReflectionClass<object>, class-string}>
+     */
+    private function discoverEntities(ContainerBuilder $container): iterable
+    {
+        foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $id => $tags) {
+            $entityClass = $container->getDefinition($id)->getClass() ?? $id;
+
+            if (!class_exists($entityClass)) {
+                throw new InvalidGlobalObjectException(
+                    $entityClass,
+                    new \ReflectionException(\sprintf('Class "%s" does not exist', $entityClass)),
+                );
+            }
+
+            /** @var class-string $managerClass */
+            $managerClass = $tags[0]['manager'];
+
+            yield $entityClass => [new \ReflectionClass($entityClass), $managerClass];
+        }
+    }
+
+    /**
      * Scans all managers for #[AsConnection] methods to build a map
      * of parent type name => list of field names handled by ConnectionFieldPass.
      *
@@ -105,18 +125,8 @@ class GlobalObjectTypePass implements CompilerPassInterface
     {
         $map = [];
 
-        foreach ($container->findTaggedServiceIds(GlobalObjectManagerInterface::TAG) as $serviceId => $_) {
-            /** @var class-string<GlobalObjectManagerInterface> $managerClass */
-            $managerClass = $container->getDefinition($serviceId)->getClass() ?? $serviceId;
-
-            $globalObjectClass = $managerClass::getManagedGlobalObject();
-
-            // Skip unresolvable classes so the main loop can report them via InvalidGlobalObjectException.
-            if (!class_exists($globalObjectClass)) {
-                continue;
-            }
-
-            $parentTypeName = (new \ReflectionClass($globalObjectClass))->getShortName();
+        foreach ($this->discoverEntities($container) as [$entityRc, $managerClass]) {
+            $parentTypeName = $entityRc->getShortName();
 
             foreach (new \ReflectionClass($managerClass)->getMethods() as $rm) {
                 $attrs = $rm->getAttributes(AsConnection::class);

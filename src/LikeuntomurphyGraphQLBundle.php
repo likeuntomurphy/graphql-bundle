@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Likeuntomurphy\GraphQL;
 
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\ConnectionFieldPass;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\EnumTypePass;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\GlobalObjectTypePass;
@@ -13,6 +14,7 @@ use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\QueryFieldPass;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\StandardTypePass;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\TypeNamePass;
 use Likeuntomurphy\GraphQL\DependencyInjection\GraphQLExtension;
+use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
@@ -23,6 +25,13 @@ class LikeuntomurphyGraphQLBundle extends Bundle
     public function build(ContainerBuilder $container): void
     {
         parent::build($container);
+
+        $container->registerAttributeForAutoconfiguration(
+            GlobalObject::class,
+            static function (ChildDefinition $def, GlobalObject $attr): void {
+                $def->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => $attr->manager]);
+            },
+        );
 
         $passes = [
             new StandardTypePass(),

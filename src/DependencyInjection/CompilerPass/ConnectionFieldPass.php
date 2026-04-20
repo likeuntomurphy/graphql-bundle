@@ -7,8 +7,8 @@ namespace Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass;
 use Likeuntomurphy\GraphQL\Argument\After;
 use Likeuntomurphy\GraphQL\Argument\First;
 use Likeuntomurphy\GraphQL\Attribute\AsConnection;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\Exception\InvalidConnectionFieldException;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionResolver;
 use Likeuntomurphy\GraphQL\Resolver\Field\NestedConnectionFieldHandler;
 use Likeuntomurphy\GraphQL\TypeRegistry;
@@ -25,27 +25,30 @@ class ConnectionFieldPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        foreach ($container->findTaggedServiceIds(GlobalObjectManagerInterface::TAG) as $serviceId => $_) {
+        foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $entityServiceId => $tags) {
             try {
-                /** @var class-string<GlobalObjectManagerInterface> $managerClass */
-                $managerClass = $container->getDefinition($serviceId)->getClass() ?? $serviceId;
+                /** @var class-string $entityClass */
+                $entityClass = $container->getDefinition($entityServiceId)->getClass() ?? $entityServiceId;
+                $entityRc = new \ReflectionClass($entityClass);
 
-                $parentTypeName = new \ReflectionClass($managerClass::getManagedGlobalObject())->getShortName();
+                /** @var class-string $managerClass */
+                $managerClass = $tags[0]['manager'];
+                $parentTypeName = $entityRc->getShortName();
 
                 foreach (new \ReflectionClass($managerClass)->getMethods() as $rm) {
-                    $attrs = $rm->getAttributes(AsConnection::class);
+                    $connectionAttrs = $rm->getAttributes(AsConnection::class);
 
-                    if ([] === $attrs) {
+                    if ([] === $connectionAttrs) {
                         continue;
                     }
 
-                    $attr = $attrs[0]->newInstance();
+                    $connectionAttr = $connectionAttrs[0]->newInstance();
                     $childTypeName = $this->resolveChildTypeName($rm);
 
-                    $this->addConnectionField($parentTypeName, $childTypeName, $attr->fieldName, $rm->getName(), $serviceId, $container);
+                    $this->addConnectionField($parentTypeName, $childTypeName, $connectionAttr->fieldName, $rm->getName(), $managerClass, $container);
                 }
             } catch (\Exception $e) {
-                throw new InvalidConnectionFieldException($serviceId, $e);
+                throw new InvalidConnectionFieldException($entityServiceId, $e);
             }
         }
     }

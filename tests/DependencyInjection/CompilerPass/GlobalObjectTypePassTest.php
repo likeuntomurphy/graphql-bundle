@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace Likeuntomurphy\GraphQL\Tests\DependencyInjection\CompilerPass;
 
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\GlobalObjectTypePass;
 use Likeuntomurphy\GraphQL\Exception\InvalidGlobalObjectException;
 use Likeuntomurphy\GraphQL\Exception\TypeNameCollisionException;
 use Likeuntomurphy\GraphQL\Field\NodeId;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Event;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Task;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\WithResolver;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\CollidingProjectManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ConnectionFieldManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\EventManager;
@@ -37,11 +43,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
     {
         parent::setUp();
 
-        $this->container->setDefinition(
-            ProjectManager::class,
-            (new Definition(ProjectManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(Project::class, ProjectManager::class);
     }
 
     public function testTaggedWithShortName(): void
@@ -148,11 +150,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
     public function testFieldResolverFromAttribute(): void
     {
-        $this->container->setDefinition(
-            WithResolverManager::class,
-            (new Definition(WithResolverManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(WithResolver::class, WithResolverManager::class);
 
         $this->compile();
 
@@ -164,11 +162,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
     public function testObjectPropertyResolvesToTypeReference(): void
     {
-        $this->container->setDefinition(
-            TaskManager::class,
-            (new Definition(TaskManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(Task::class, TaskManager::class);
 
         $this->compile();
 
@@ -182,11 +176,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
     public function testResolvesDateTimeImmutableFieldToDateTimeScalar(): void
     {
-        $this->container->setDefinition(
-            EventManager::class,
-            (new Definition(EventManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(Event::class, EventManager::class);
 
         $this->compile();
 
@@ -205,25 +195,21 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsInvalidGlobalObjectExceptionForNonExistentClass(): void
     {
+        $this->container->setDefinition(InvalidManager::class, new Definition(InvalidManager::class));
         $this->container->setDefinition(
-            InvalidManager::class,
-            (new Definition(InvalidManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
+            'NonExistent',
+            (new Definition('NonExistent'))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => InvalidManager::class]),
         );
 
         $this->expectException(InvalidGlobalObjectException::class);
-        $this->expectExceptionMessageMatches('/InvalidManager/');
+        $this->expectExceptionMessageMatches('/NonExistent/');
 
         $this->compile();
     }
 
     public function testThrowsTypeNameCollisionForDuplicateGlobalObjectNames(): void
     {
-        $this->container->setDefinition(
-            CollidingProjectManager::class,
-            (new Definition(CollidingProjectManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(\Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Collision\Project::class, CollidingProjectManager::class);
 
         $this->expectException(TypeNameCollisionException::class);
         $this->expectExceptionMessageMatches('/Project/');
@@ -234,11 +220,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
     public function testSkipsConnectionFieldsFromTypeDefinition(): void
     {
-        $this->container->setDefinition(
-            ConnectionFieldManager::class,
-            (new Definition(ConnectionFieldManager::class))
-                ->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(ProjectWithAttachments::class, ConnectionFieldManager::class);
 
         $this->compile();
 
@@ -287,5 +269,18 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
     protected function registerCompilerPass(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new GlobalObjectTypePass());
+    }
+
+    /**
+     * @param class-string $entityClass
+     * @param class-string $managerClass
+     */
+    private function registerEntity(string $entityClass, string $managerClass): void
+    {
+        $this->container->setDefinition($managerClass, new Definition($managerClass));
+        $this->container->setDefinition(
+            $entityClass,
+            (new Definition($entityClass))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => $managerClass]),
+        );
     }
 }

@@ -23,11 +23,11 @@ class MutationFieldHandlerTest extends TestCase
         $resolver = $this->createMock(MutationFieldResolver::class);
         $resolver->expects(self::once())
             ->method('resolve')
-            ->with('create', 'Widget', ['name' => 'foo'])
+            ->with('create', 'Widget', \stdClass::class, ['name' => 'foo'])
             ->willReturn($expected)
         ;
 
-        $handler = new MutationFieldHandler('create', 'Widget', $resolver);
+        $handler = new MutationFieldHandler('create', 'Widget', \stdClass::class, $resolver);
         $info = $this->createStub(ResolveInfo::class);
 
         $result = $handler(null, ['name' => 'foo'], [], $info);

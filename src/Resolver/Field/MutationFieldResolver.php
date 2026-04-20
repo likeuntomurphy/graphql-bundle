@@ -40,10 +40,11 @@ class MutationFieldResolver
     }
 
     /**
+     * @param class-string                                           $entityClass
      * @param array<string, mixed>                                   $args
      * @param array<string, array{property: string, target: string}> $relations
      */
-    public function resolve(string $method, string $typeName, array $args, array $relations = []): object
+    public function resolve(string $method, string $typeName, string $entityClass, array $args, array $relations = []): object
     {
         /** @var list<\UnitEnum> $validationGroups */
         $validationGroups = $args['validationGroups'] ?? [];
@@ -52,19 +53,20 @@ class MutationFieldResolver
         $args = $this->flattenEnums($args);
 
         return match ($method) {
-            'create' => $this->handleCreate($this->creatableManagers->get($typeName), $args, $relations, $validationGroups),
-            'update' => $this->handleUpdate($this->updatableManagers->get($typeName), $args, $relations, $validationGroups),
+            'create' => $this->handleCreate($this->creatableManagers->get($typeName), $entityClass, $args, $relations, $validationGroups),
+            'update' => $this->handleUpdate($this->updatableManagers->get($typeName), $entityClass, $args, $relations, $validationGroups),
             'delete' => $this->handleDelete($this->deletableManagers->get($typeName), $args),
             default => throw new UnknownMutationMethodException($method),
         };
     }
 
     /**
+     * @param class-string                                           $entityClass
      * @param array<string, mixed>                                   $args
      * @param array<string, array{property: string, target: string}> $relations
      * @param list<\UnitEnum>                                        $validationGroups
      */
-    private function handleCreate(CreatableManagerInterface $manager, array $args, array $relations, array $validationGroups): object
+    private function handleCreate(CreatableManagerInterface $manager, string $entityClass, array $args, array $relations, array $validationGroups): object
     {
         [$args, $violations] = $this->resolveRelations($args, $relations);
 
@@ -72,10 +74,8 @@ class MutationFieldResolver
             return ValidationErrorList::fromConstraintViolationList($violations);
         }
 
-        $class = $manager::getManagedGlobalObject();
-
         /** @var object $document */
-        $document = $this->denormalizer->denormalize($args, $class, context: [AbstractNormalizer::OBJECT_TO_POPULATE => new $class()]);
+        $document = $this->denormalizer->denormalize($args, $entityClass, context: [AbstractNormalizer::OBJECT_TO_POPULATE => new $entityClass()]);
 
         if ($errors = $this->validate($document, $validationGroups)) {
             return $errors;
@@ -85,11 +85,12 @@ class MutationFieldResolver
     }
 
     /**
+     * @param class-string                                           $entityClass
      * @param array<string, mixed>                                   $args
      * @param array<string, array{property: string, target: string}> $relations
      * @param list<\UnitEnum>                                        $validationGroups
      */
-    private function handleUpdate(UpdatableManagerInterface $manager, array $args, array $relations, array $validationGroups): object
+    private function handleUpdate(UpdatableManagerInterface $manager, string $entityClass, array $args, array $relations, array $validationGroups): object
     {
         /** @var string $nodeId */
         $nodeId = $args['id'];
@@ -108,7 +109,7 @@ class MutationFieldResolver
             return ValidationErrorList::fromConstraintViolationList($violations);
         }
 
-        $this->denormalizer->denormalize($args, $manager::getManagedGlobalObject(), context: [AbstractNormalizer::OBJECT_TO_POPULATE => $document]);
+        $this->denormalizer->denormalize($args, $entityClass, context: [AbstractNormalizer::OBJECT_TO_POPULATE => $document]);
 
         if ($errors = $this->validate($document, $validationGroups)) {
             return $errors;

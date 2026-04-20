@@ -13,7 +13,6 @@ use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\Exception\InvalidMutationFieldException;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Resolver\Field\MutationFieldHandler;
 use Likeuntomurphy\GraphQL\Resolver\Field\MutationFieldResolver;
 use Likeuntomurphy\GraphQL\Resolver\Type\ObjectTypeResolver;
@@ -47,14 +46,15 @@ class MutationFieldPass implements CompilerPassInterface
     {
         $definitions = [];
 
-        foreach ($container->findTaggedServiceIds(GlobalObjectManagerInterface::TAG) as $serviceId => $_) {
+        foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $entityServiceId => $tags) {
             try {
-                /** @var class-string<GlobalObjectManagerInterface> $managerClass */
-                $managerClass = $container->getDefinition($serviceId)->getClass() ?? $serviceId;
+                /** @var class-string $entityClass */
+                $entityClass = $container->getDefinition($entityServiceId)->getClass() ?? $entityServiceId;
+                $entityRc = new \ReflectionClass($entityClass);
 
-                $objectClass = $managerClass::getManagedGlobalObject();
-                $documentRc = new \ReflectionClass($objectClass);
-                $typeName = $documentRc->getShortName();
+                /** @var class-string $managerClass */
+                $managerClass = $tags[0]['manager'];
+                $typeName = $entityRc->getShortName();
 
                 $unionName = $typeName.'MutationResult';
                 $unionId = TypeRegistry::TAG.'.'.$unionName;
@@ -72,7 +72,7 @@ class MutationFieldPass implements CompilerPassInterface
                     $idArg = ['id' => ['type' => $this->nonNull(new Reference(TypeRegistry::ID), $container)]];
 
                     $relations = [];
-                    $payloadFields = 'delete' === $method ? [] : $this->resolveFields($documentRc, $container, $relations);
+                    $payloadFields = 'delete' === $method ? [] : $this->resolveFields($entityRc, $container, $relations);
 
                     $args = match ($method) {
                         'create' => $payloadFields,
@@ -93,6 +93,7 @@ class MutationFieldPass implements CompilerPassInterface
                     $definitions[$handlerId] = new Definition(MutationFieldHandler::class, [
                         $method,
                         $typeName,
+                        $entityClass,
                         new Reference(MutationFieldResolver::class),
                         $relations,
                     ]);
@@ -119,7 +120,7 @@ class MutationFieldPass implements CompilerPassInterface
                     ]])->setPublic(true)->addTag(TypeRegistry::TAG, ['name' => $unionName]);
                 }
             } catch (\ReflectionException $e) {
-                throw new InvalidMutationFieldException($serviceId, $e);
+                throw new InvalidMutationFieldException($entityServiceId, $e);
             }
         }
 

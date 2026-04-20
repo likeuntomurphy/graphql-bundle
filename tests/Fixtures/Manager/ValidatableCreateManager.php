@@ -7,16 +7,10 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Enum\ProjectValidationGroup;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 use Likeuntomurphy\GraphQL\ValidatableManagerInterface;
 
 class ValidatableCreateManager implements GlobalObjectManagerInterface, CreatableManagerInterface, ValidatableManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return Project::class;
-    }
-
     public static function getValidationGroupEnum(): string
     {
         return ProjectValidationGroup::class;

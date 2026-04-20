@@ -9,10 +9,10 @@ use GraphQL\Type\Definition\ListOfType;
 use GraphQL\Type\Definition\ObjectType;
 use Likeuntomurphy\GraphQL\Argument\After;
 use Likeuntomurphy\GraphQL\Argument\First;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\Exception\InvalidQueryFieldException;
 use Likeuntomurphy\GraphQL\Field\Cursor;
 use Likeuntomurphy\GraphQL\Field\PageInfo as PageInfoField;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\ListableManagerInterface;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionFieldHandler;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionResolver;
@@ -39,21 +39,23 @@ class QueryFieldPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        foreach ($container->findTaggedServiceIds(GlobalObjectManagerInterface::TAG) as $serviceId => $_) {
+        foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $entityServiceId => $tags) {
             try {
-                /** @var class-string<GlobalObjectManagerInterface> $managerClass */
-                $managerClass = $container->getDefinition($serviceId)->getClass() ?? $serviceId;
+                /** @var class-string $entityClass */
+                $entityClass = $container->getDefinition($entityServiceId)->getClass() ?? $entityServiceId;
+                $entityRc = new \ReflectionClass($entityClass);
 
-                $objectClass = $managerClass::getManagedGlobalObject();
-                $typeName = new \ReflectionClass($objectClass)->getShortName();
+                /** @var class-string $managerClass */
+                $managerClass = $tags[0]['manager'];
+                $typeName = $entityRc->getShortName();
 
                 $this->createConnectionTypes($typeName, $container);
 
                 if (is_subclass_of($managerClass, ListableManagerInterface::class)) {
-                    $this->createQueryField($typeName, $serviceId, $container);
+                    $this->createQueryField($typeName, $managerClass, $container);
                 }
             } catch (\ReflectionException $e) {
-                throw new InvalidQueryFieldException($serviceId, $e);
+                throw new InvalidQueryFieldException($entityServiceId, $e);
             }
         }
     }

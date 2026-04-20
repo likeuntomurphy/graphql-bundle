@@ -7,7 +7,6 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\StubDocument;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 
 /**
@@ -15,11 +14,6 @@ use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
  */
 class WidgetManagerStub implements GlobalObjectManagerInterface, CreatableManagerInterface, UpdatableManagerInterface, DeletableManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return StubDocument::class;
-    }
-
     public function read(string $id): ?object
     {
         return new \stdClass();

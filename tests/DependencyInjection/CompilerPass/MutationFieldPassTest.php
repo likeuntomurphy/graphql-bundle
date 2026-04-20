@@ -8,13 +8,20 @@ use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\PhpEnumType;
 use GraphQL\Type\Definition\Type;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\MutationFieldPass;
 use Likeuntomurphy\GraphQL\Exception\InvalidMutationFieldException;
 use Likeuntomurphy\GraphQL\Exception\UnsupportedTypeException;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Resolver\Field\MutationFieldHandler;
 use Likeuntomurphy\GraphQL\Resolver\Field\MutationFieldResolver;
 use Likeuntomurphy\GraphQL\Resolver\Type\ObjectTypeResolver;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Attachment;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\NullableDocument;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Order;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ReadonlyDocument;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Ticket;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\UnsupportedDocument;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\CreateOnlyManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\CrudManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\DeleteOnlyManager;
@@ -44,7 +51,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 {
     public function testRegistersMutationResultUnionType(): void
     {
-        $this->registerManager(CrudManager::class);
+        $this->registerEntity(Project::class, CrudManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -58,7 +65,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testMutationResultUnionContainsObjectTypeAndValidationErrorList(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -71,7 +78,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testRegistersCreateMutationField(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -81,7 +88,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testCreateMutationFieldIsTagged(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -94,7 +101,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testCreateMutationFieldHasPayloadArgs(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -107,7 +114,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testCreateMutationFieldHasCorrectName(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -119,7 +126,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testMutationFieldResolvesToHandler(): void
     {
-        $this->registerManager(CrudManager::class);
+        $this->registerEntity(Project::class, CrudManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -133,7 +140,8 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertSame(MutationFieldHandler::class, $createHandler->getClass());
         $this->assertSame('create', $createHandler->getArgument(0));
         $this->assertSame('Project', $createHandler->getArgument(1));
-        $this->assertSame(MutationFieldResolver::class, (string) $createHandler->getArgument(2));
+        $this->assertSame(Project::class, $createHandler->getArgument(2));
+        $this->assertSame(MutationFieldResolver::class, (string) $createHandler->getArgument(3));
 
         $deleteHandler = $this->container->findDefinition('graphql.mutation.handler.deleteProject');
         $this->assertSame('delete', $deleteHandler->getArgument(0));
@@ -142,7 +150,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testUpdateMutationFieldHasIdAndPayloadArgs(): void
     {
-        $this->registerManager(CrudManager::class);
+        $this->registerEntity(Project::class, CrudManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -155,7 +163,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testDeleteMutationFieldHasOnlyIdArg(): void
     {
-        $this->registerManager(DeleteOnlyManager::class);
+        $this->registerEntity(Project::class, DeleteOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -168,7 +176,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testSkipsMethodsNotOnManager(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -179,7 +187,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testSkipsUnimplementedInterfaces(): void
     {
-        $this->registerManager(ExcludedDeleteManager::class);
+        $this->registerEntity(Project::class, ExcludedDeleteManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -190,7 +198,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testValidationGroupsArgWhenManagerIsValidatable(): void
     {
-        $this->registerManager(ValidatableCreateManager::class);
+        $this->registerEntity(Project::class, ValidatableCreateManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -203,7 +211,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testValidationGroupEnumIsRegisteredAsType(): void
     {
-        $this->registerManager(ValidatableCreateManager::class);
+        $this->registerEntity(Project::class, ValidatableCreateManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -218,7 +226,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testNoValidationGroupsArgWhenManagerIsNotValidatable(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -230,7 +238,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testNestedObjectCreatesInputType(): void
     {
-        $this->registerManager(OrderManager::class);
+        $this->registerEntity(Order::class, OrderManager::class);
         $this->registerObjectType('Order');
 
         $this->compile();
@@ -245,7 +253,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testInputTypeNameHasSuffix(): void
     {
-        $this->registerManager(OrderManager::class);
+        $this->registerEntity(Order::class, OrderManager::class);
         $this->registerObjectType('Order');
 
         $this->compile();
@@ -257,7 +265,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testEnumPropertyResolvesToTypeReference(): void
     {
-        $this->registerManager(TicketManager::class);
+        $this->registerEntity(Ticket::class, TicketManager::class);
         $this->registerObjectType('Ticket');
 
         $this->compile();
@@ -269,7 +277,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testReadonlyPropertyIsSkipped(): void
     {
-        $this->registerManager(ReadonlyManager::class);
+        $this->registerEntity(ReadonlyDocument::class, ReadonlyManager::class);
         $this->registerObjectType('ReadonlyDocument');
 
         $this->compile();
@@ -282,7 +290,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testNullablePropertyIsNotNonNull(): void
     {
-        $this->registerManager(NullableManager::class);
+        $this->registerEntity(NullableDocument::class, NullableManager::class);
         $this->registerObjectType('NullableDocument');
 
         $this->compile();
@@ -295,7 +303,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsForUnsupportedType(): void
     {
-        $this->registerManager(UnsupportedManager::class);
+        $this->registerEntity(UnsupportedDocument::class, UnsupportedManager::class);
         $this->registerObjectType('UnsupportedDocument');
 
         $this->expectException(UnsupportedTypeException::class);
@@ -305,11 +313,15 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsInvalidMutationFieldExceptionForNonExistentClass(): void
     {
-        $this->registerManager(InvalidManager::class);
+        $this->container->setDefinition(InvalidManager::class, new Definition(InvalidManager::class));
+        $this->container->setDefinition(
+            'NonExistent',
+            (new Definition('NonExistent'))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => InvalidManager::class]),
+        );
         $this->registerObjectType('NonExistent');
 
         $this->expectException(InvalidMutationFieldException::class);
-        $this->expectExceptionMessageMatches('/InvalidManager/');
+        $this->expectExceptionMessageMatches('/NonExistent/');
 
         $this->compile();
     }
@@ -323,7 +335,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testMutationResultHasResolveTypeReference(): void
     {
-        $this->registerManager(CreateOnlyManager::class);
+        $this->registerEntity(Project::class, CreateOnlyManager::class);
         $this->registerObjectType('Project');
 
         $this->compile();
@@ -336,7 +348,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testIdFieldAttributeResolvesToIdType(): void
     {
-        $this->registerManager(IdFieldManager::class);
+        $this->registerEntity(Attachment::class, IdFieldManager::class);
         $this->registerObjectType('Attachment');
 
         $this->compile();
@@ -349,14 +361,14 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testRelationMapPassedToHandler(): void
     {
-        $this->registerManager(IdFieldManager::class);
+        $this->registerEntity(Attachment::class, IdFieldManager::class);
         $this->registerObjectType('Attachment');
 
         $this->compile();
 
         $handler = $this->container->findDefinition('graphql.mutation.handler.createAttachment');
 
-        $this->assertSame(['projectId' => ['property' => 'project', 'target' => 'Project']], $handler->getArgument(3));
+        $this->assertSame(['projectId' => ['property' => 'project', 'target' => 'Project']], $handler->getArgument(4));
     }
 
     protected function registerCompilerPass(ContainerBuilder $container): void
@@ -365,13 +377,15 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
     }
 
     /**
-     * @param class-string<GlobalObjectManagerInterface> $managerClass
+     * @param class-string $entityClass
+     * @param class-string $managerClass
      */
-    private function registerManager(string $managerClass): void
+    private function registerEntity(string $entityClass, string $managerClass): void
     {
+        $this->container->setDefinition($managerClass, new Definition($managerClass));
         $this->container->setDefinition(
-            $managerClass,
-            (new Definition($managerClass))->addTag(GlobalObjectManagerInterface::TAG),
+            $entityClass,
+            (new Definition($entityClass))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => $managerClass]),
         );
     }
 

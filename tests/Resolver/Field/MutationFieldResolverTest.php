@@ -64,7 +64,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager);
 
-        $result = $resolver->resolve('create', 'Widget', ['name' => 'new-widget']);
+        $result = $resolver->resolve('create', 'Widget', StubDocument::class, ['name' => 'new-widget']);
 
         $this->assertSame('new-widget', $result->name ?? null);
     }
@@ -87,7 +87,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager, validator: $validator);
 
-        $resolver->resolve('create', 'Widget', ['name' => 'foo', 'validationGroups' => [ProjectValidationGroup::Default]]);
+        $resolver->resolve('create', 'Widget', StubDocument::class, ['name' => 'foo', 'validationGroups' => [ProjectValidationGroup::Default]]);
     }
 
     public function testUpdateCallsManagerUpdateWithMergedDocument(): void
@@ -114,7 +114,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager);
 
-        $result = $resolver->resolve('update', 'Widget', ['id' => base64_encode('Widget:42'), 'name' => 'new']);
+        $result = $resolver->resolve('update', 'Widget', StubDocument::class, ['id' => base64_encode('Widget:42'), 'name' => 'new']);
 
         $this->assertSame('new', $existing->name);
         $this->assertSame($existing, $result);
@@ -134,7 +134,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager);
 
-        $result = $resolver->resolve('delete', 'Widget', ['id' => base64_encode('Widget:42')]);
+        $result = $resolver->resolve('delete', 'Widget', StubDocument::class, ['id' => base64_encode('Widget:42')]);
 
         $this->assertSame($existing, $result);
     }
@@ -156,7 +156,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager, validator: $validator);
 
-        $result = $resolver->resolve('create', 'Widget', ['name' => '']);
+        $result = $resolver->resolve('create', 'Widget', StubDocument::class, ['name' => '']);
 
         $this->assertInstanceOf(ValidationErrorList::class, $result);
         $this->assertCount(1, $result->errors);
@@ -183,7 +183,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager, validator: $validator);
 
-        $result = $resolver->resolve('update', 'Widget', ['id' => base64_encode('Widget:42'), 'name' => 'x']);
+        $result = $resolver->resolve('update', 'Widget', StubDocument::class, ['id' => base64_encode('Widget:42'), 'name' => 'x']);
 
         $this->assertInstanceOf(ValidationErrorList::class, $result);
         $this->assertCount(1, $result->errors);
@@ -215,6 +215,7 @@ class MutationFieldResolverTest extends TestCase
         $resolver->resolve(
             'create',
             'Widget',
+            StubDocument::class,
             ['projectId' => base64_encode('Widget:99'), 'name' => 'foo'],
             ['projectId' => ['property' => 'project', 'target' => 'Project']],
         );
@@ -236,6 +237,7 @@ class MutationFieldResolverTest extends TestCase
         $result = $resolver->resolve(
             'create',
             'Widget',
+            StubDocument::class,
             ['projectId' => base64_encode('Widget:99'), 'name' => 'foo'],
             ['projectId' => ['property' => 'project', 'target' => 'Project']],
         );
@@ -257,7 +259,7 @@ class MutationFieldResolverTest extends TestCase
         $resolver = $this->buildResolver($manager);
         $nodeId = base64_encode('Widget:42');
 
-        $result = $resolver->resolve('update', 'Widget', ['id' => $nodeId, 'name' => 'updated']);
+        $result = $resolver->resolve('update', 'Widget', StubDocument::class, ['id' => $nodeId, 'name' => 'updated']);
 
         $this->assertInstanceOf(NodeNotFound::class, $result);
         $this->assertSame($nodeId, $result->id);
@@ -275,7 +277,7 @@ class MutationFieldResolverTest extends TestCase
         $resolver = $this->buildResolver($manager);
         $nodeId = base64_encode('Widget:42');
 
-        $result = $resolver->resolve('delete', 'Widget', ['id' => $nodeId]);
+        $result = $resolver->resolve('delete', 'Widget', StubDocument::class, ['id' => $nodeId]);
 
         $this->assertInstanceOf(NodeNotFound::class, $result);
         $this->assertSame($nodeId, $result->id);
@@ -298,7 +300,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager);
 
-        $resolver->resolve('create', 'Widget', ['color' => Color::Red]);
+        $resolver->resolve('create', 'Widget', StubDocument::class, ['color' => Color::Red]);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -318,7 +320,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager);
 
-        $resolver->resolve('create', 'Widget', ['group' => ProjectValidationGroup::Default]);
+        $resolver->resolve('create', 'Widget', StubDocument::class, ['group' => ProjectValidationGroup::Default]);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -338,7 +340,7 @@ class MutationFieldResolverTest extends TestCase
 
         $resolver = $this->buildResolver($manager);
 
-        $resolver->resolve('create', 'Widget', ['nested' => ['color' => Color::Green]]);
+        $resolver->resolve('create', 'Widget', StubDocument::class, ['nested' => ['color' => Color::Green]]);
     }
 
     public function testThrowsOnUnknownMethod(): void
@@ -348,7 +350,7 @@ class MutationFieldResolverTest extends TestCase
         $this->expectException(UnknownMutationMethodException::class);
         $this->expectExceptionMessage('Unknown mutation method "archive".');
 
-        $resolver->resolve('archive', 'Widget', []);
+        $resolver->resolve('archive', 'Widget', StubDocument::class, []);
     }
 
     private function buildResolver(

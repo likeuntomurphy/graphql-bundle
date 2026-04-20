@@ -6,7 +6,7 @@ namespace Likeuntomurphy\GraphQL\Tests;
 
 use GraphQL\GraphQL;
 use GraphQL\Type\Schema;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\LikeuntomurphyGraphQLBundle;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Widget;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\FullWidgetManager;
@@ -37,12 +37,14 @@ class SchemaIntegrationTest extends TestCase
         $bundle->build($container);
         $bundle->getContainerExtension()?->load([], $container);
 
-        // Register fixture manager.
+        // Register fixture manager + entity.
         $container->setDefinition(
             FullWidgetManager::class,
-            (new Definition(FullWidgetManager::class))
-                ->setPublic(true)
-                ->addTag(GlobalObjectManagerInterface::TAG),
+            (new Definition(FullWidgetManager::class))->setPublic(true),
+        );
+        $container->setDefinition(
+            Widget::class,
+            (new Definition(Widget::class))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => FullWidgetManager::class]),
         );
 
         // Register denormalizer required by MutationFieldResolver.

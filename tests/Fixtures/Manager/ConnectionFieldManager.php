@@ -16,11 +16,6 @@ use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
 
 class ConnectionFieldManager implements GlobalObjectManagerInterface, ListableManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return ProjectWithAttachments::class;
-    }
-
     /** @return PaginatedResults<GlobalObjectInterface> */
     public function list(CursorPaginationParams $params, ?callable $filter = null): PaginatedResults
     {

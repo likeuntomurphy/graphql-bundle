@@ -9,11 +9,13 @@ use GraphQL\Type\Definition\ResolveInfo;
 class MutationFieldHandler
 {
     /**
-     * @param array<string, array{property: string, target: string}> $relations keyed by GraphQL arg name
+     * @param class-string                                           $entityClass
+     * @param array<string, array{property: string, target: string}> $relations   keyed by GraphQL arg name
      */
     public function __construct(
         private string $method,
         private string $typeName,
+        private string $entityClass,
         private MutationFieldResolver $resolver,
         private array $relations = [],
     ) {
@@ -29,6 +31,6 @@ class MutationFieldHandler
         array $context,
         ResolveInfo $info,
     ): object {
-        return $this->resolver->resolve($this->method, $this->typeName, $args, $this->relations);
+        return $this->resolver->resolve($this->method, $this->typeName, $this->entityClass, $args, $this->relations);
     }
 }

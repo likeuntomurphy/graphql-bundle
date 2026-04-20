@@ -6,12 +6,14 @@ namespace Likeuntomurphy\GraphQL\Tests\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\ConnectionFieldPass;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\QueryFieldPass;
 use Likeuntomurphy\GraphQL\Exception\InvalidConnectionFieldException;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionResolver;
 use Likeuntomurphy\GraphQL\Resolver\Field\NestedConnectionFieldHandler;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ConnectionFieldManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\InvalidConnectionManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ListableManager;
@@ -100,10 +102,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testDoesNothingWithNoConnectionFieldManagers(): void
     {
-        $this->container->setDefinition(
-            ListableManager::class,
-            (new Definition(ListableManager::class))->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -112,10 +111,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsInvalidConnectionFieldExceptionForNonExistentClass(): void
     {
-        $this->container->setDefinition(
-            InvalidConnectionManager::class,
-            (new Definition(InvalidConnectionManager::class))->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(ProjectWithAttachments::class, InvalidConnectionManager::class);
 
         $this->container->setDefinition(
             TypeRegistry::TAG.'.ProjectWithAttachments',
@@ -123,17 +119,14 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
         );
 
         $this->expectException(InvalidConnectionFieldException::class);
-        $this->expectExceptionMessageMatches('/InvalidConnectionManager/');
+        $this->expectExceptionMessageMatches('/PaginatedResults<NonExistent>/');
 
         $this->compile();
     }
 
     public function testThrowsWhenReturnTypeIsNotGeneric(): void
     {
-        $this->container->setDefinition(
-            NonGenericConnectionManager::class,
-            (new Definition(NonGenericConnectionManager::class))->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(ProjectWithAttachments::class, NonGenericConnectionManager::class);
 
         $this->container->setDefinition(
             TypeRegistry::TAG.'.ProjectWithAttachments',
@@ -148,10 +141,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsWhenGenericTypeWrapsNonObjectType(): void
     {
-        $this->container->setDefinition(
-            ScalarGenericConnectionManager::class,
-            (new Definition(ScalarGenericConnectionManager::class))->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(ProjectWithAttachments::class, ScalarGenericConnectionManager::class);
 
         $this->container->setDefinition(
             TypeRegistry::TAG.'.ProjectWithAttachments',
@@ -166,10 +156,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsWhenParentTypeNotInContainer(): void
     {
-        $this->container->setDefinition(
-            ConnectionFieldManager::class,
-            (new Definition(ConnectionFieldManager::class))->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(ProjectWithAttachments::class, ConnectionFieldManager::class);
 
         $this->expectException(InvalidConnectionFieldException::class);
 
@@ -184,15 +171,25 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
 
     private function registerManagers(): void
     {
-        $this->container->setDefinition(
-            ConnectionFieldManager::class,
-            (new Definition(ConnectionFieldManager::class))->addTag(GlobalObjectManagerInterface::TAG),
-        );
+        $this->registerEntity(ProjectWithAttachments::class, ConnectionFieldManager::class);
 
         // Simulate the parent type created by GlobalObjectTypePass.
         $this->container->setDefinition(
             TypeRegistry::TAG.'.ProjectWithAttachments',
             new Definition(ObjectType::class, [['name' => 'ProjectWithAttachments', 'fields' => []]]),
+        );
+    }
+
+    /**
+     * @param class-string $entityClass
+     * @param class-string $managerClass
+     */
+    private function registerEntity(string $entityClass, string $managerClass): void
+    {
+        $this->container->setDefinition($managerClass, new Definition($managerClass));
+        $this->container->setDefinition(
+            $entityClass,
+            (new Definition($entityClass))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => $managerClass]),
         );
     }
 }

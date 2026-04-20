@@ -10,15 +10,9 @@ use Likeuntomurphy\GraphQL\ListableManagerInterface;
 use Likeuntomurphy\GraphQL\Model\PageInfo;
 use Likeuntomurphy\GraphQL\Pagination\CursorPaginationParams;
 use Likeuntomurphy\GraphQL\Pagination\PaginatedResults;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 
 class ListableManager implements GlobalObjectManagerInterface, ListableManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return Project::class;
-    }
-
     /** @return PaginatedResults<GlobalObjectInterface> */
     public function list(CursorPaginationParams $params, ?callable $filter = null): PaginatedResults
     {

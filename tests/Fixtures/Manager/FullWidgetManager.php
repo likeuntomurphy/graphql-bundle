@@ -21,11 +21,6 @@ class FullWidgetManager implements GlobalObjectManagerInterface, ListableManager
 
     private int $nextId = 1;
 
-    public static function getManagedGlobalObject(): string
-    {
-        return Widget::class;
-    }
-
     public function seed(Widget ...$widgets): void
     {
         foreach ($widgets as $widget) {

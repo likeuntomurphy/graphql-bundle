@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Likeuntomurphy\GraphQL\Tests\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\Type;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\QueryFieldPass;
 use Likeuntomurphy\GraphQL\Exception\InvalidQueryFieldException;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionFieldHandler;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionResolver;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Report;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\InvalidManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ListableManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\NonListableManager;
@@ -29,7 +31,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 {
     public function testCreatesConnectionTypesForManager(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -39,7 +41,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testCreatesQueryFieldWhenListMethodExists(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -48,7 +50,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testDoesNotCreateQueryFieldWithoutListMethod(): void
     {
-        $this->registerManager(NonListableManager::class);
+        $this->registerEntity(Report::class, NonListableManager::class);
 
         $this->compile();
 
@@ -59,7 +61,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testQueryFieldIsTaggedForQueryType(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -71,7 +73,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testQueryFieldHasCorrectName(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -82,7 +84,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testQueryFieldTypeIsConnectionReference(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -94,7 +96,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testQueryFieldResolvesToHandler(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -110,7 +112,7 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testQueryFieldHasFirstAndAfterArgs(): void
     {
-        $this->registerManager(ListableManager::class);
+        $this->registerEntity(Project::class, ListableManager::class);
 
         $this->compile();
 
@@ -130,10 +132,14 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
 
     public function testThrowsInvalidQueryFieldExceptionForNonExistentClass(): void
     {
-        $this->registerManager(InvalidManager::class);
+        $this->container->setDefinition(InvalidManager::class, new Definition(InvalidManager::class));
+        $this->container->setDefinition(
+            'NonExistent',
+            (new Definition('NonExistent'))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => InvalidManager::class]),
+        );
 
         $this->expectException(InvalidQueryFieldException::class);
-        $this->expectExceptionMessageMatches('/InvalidManager/');
+        $this->expectExceptionMessageMatches('/NonExistent/');
 
         $this->compile();
     }
@@ -151,13 +157,15 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
     }
 
     /**
-     * @param class-string<GlobalObjectManagerInterface> $managerClass
+     * @param class-string $entityClass
+     * @param class-string $managerClass
      */
-    private function registerManager(string $managerClass): void
+    private function registerEntity(string $entityClass, string $managerClass): void
     {
+        $this->container->setDefinition($managerClass, new Definition($managerClass));
         $this->container->setDefinition(
-            $managerClass,
-            (new Definition($managerClass))->addTag(GlobalObjectManagerInterface::TAG),
+            $entityClass,
+            (new Definition($entityClass))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => $managerClass]),
         );
     }
 }

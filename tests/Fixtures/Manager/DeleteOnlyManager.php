@@ -6,15 +6,9 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 
 class DeleteOnlyManager implements GlobalObjectManagerInterface, DeletableManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return Project::class;
-    }
-
     public function read(string $id): ?object
     {
         return new \stdClass();

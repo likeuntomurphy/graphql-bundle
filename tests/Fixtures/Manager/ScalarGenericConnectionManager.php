@@ -13,11 +13,6 @@ use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
 
 class ScalarGenericConnectionManager implements GlobalObjectManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return ProjectWithAttachments::class;
-    }
-
     /** @return PaginatedResults<int> @phpstan-ignore generics.notSubtype */
     #[AsConnection('items')]
     public function findItems(ProjectWithAttachments $source, CursorPaginationParams $params): PaginatedResults
