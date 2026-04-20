@@ -25,4 +25,9 @@ class ReadonlyManager implements GlobalObjectManagerInterface, CreatableManagerI
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

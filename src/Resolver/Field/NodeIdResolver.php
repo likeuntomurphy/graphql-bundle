@@ -26,7 +26,9 @@ class NodeIdResolver
         mixed $context,
         ResolveInfo $info,
     ): string {
-        \assert($source instanceof GlobalObjectInterface);
+        if (!$source instanceof GlobalObjectInterface) {
+            throw new \LogicException(\sprintf('Expected source to be %s, got %s.', GlobalObjectInterface::class, get_debug_type($source)));
+        }
 
         return $this->codec->encode($info->parentType->name, $source->getId());
     }

@@ -25,4 +25,9 @@ class CreateOnlyManager implements GlobalObjectManagerInterface, CreatableManage
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

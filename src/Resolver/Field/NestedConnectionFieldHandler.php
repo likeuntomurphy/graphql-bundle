@@ -43,7 +43,10 @@ class NestedConnectionFieldHandler
             ->setAfter($after)
         ;
 
-        \assert(\is_object($source));
+        if (!\is_object($source)) {
+            throw new \LogicException(\sprintf('Expected source to be an object, got %s.', get_debug_type($source)));
+        }
+
         $result = ($this->connection)($source, $params);
 
         return $this->resolver->resolve($result->results, $result->pageInfo);

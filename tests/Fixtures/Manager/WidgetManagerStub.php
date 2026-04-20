@@ -7,13 +7,12 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\ReadableManagerInterface;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 
 /**
  * Concrete stub so PHPUnit can mock instance methods while static methods remain callable.
  */
-class WidgetManagerStub implements GlobalObjectManagerInterface, ReadableManagerInterface, CreatableManagerInterface, UpdatableManagerInterface, DeletableManagerInterface
+class WidgetManagerStub implements GlobalObjectManagerInterface, CreatableManagerInterface, UpdatableManagerInterface, DeletableManagerInterface
 {
     public static function getManagedGlobalObject(): string
     {

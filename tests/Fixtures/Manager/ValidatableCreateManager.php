@@ -32,4 +32,9 @@ class ValidatableCreateManager implements GlobalObjectManagerInterface, Creatabl
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

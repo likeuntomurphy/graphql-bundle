@@ -6,11 +6,10 @@ namespace Likeuntomurphy\GraphQL\Resolver\Field;
 
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
+use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\GlobalObjectTypePass;
 use Likeuntomurphy\GraphQL\Exception\UnknownMutationMethodException;
-use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Model\NodeNotFound;
 use Likeuntomurphy\GraphQL\Model\ValidationErrorList;
-use Likeuntomurphy\GraphQL\ReadableManagerInterface;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -19,11 +18,17 @@ use Symfony\Contracts\Service\ServiceProviderInterface;
 
 class MutationFieldResolver
 {
-    /** @param ServiceProviderInterface<GlobalObjectManagerInterface> $managers */
+    /**
+     * @param ServiceProviderInterface<CreatableManagerInterface> $creatableManagers
+     * @param ServiceProviderInterface<UpdatableManagerInterface> $updatableManagers
+     * @param ServiceProviderInterface<DeletableManagerInterface> $deletableManagers
+     */
     public function __construct(
         private NodeIdResolver $nodeIdResolver,
         private DenormalizerInterface $denormalizer,
-        #[AutowireLocator(GlobalObjectManagerInterface::TAG, indexAttribute: 'key')] private ServiceProviderInterface $managers,
+        #[AutowireLocator(GlobalObjectTypePass::CREATABLE_MANAGER_TAG, indexAttribute: 'key')] private ServiceProviderInterface $creatableManagers,
+        #[AutowireLocator(GlobalObjectTypePass::UPDATABLE_MANAGER_TAG, indexAttribute: 'key')] private ServiceProviderInterface $updatableManagers,
+        #[AutowireLocator(GlobalObjectTypePass::DELETABLE_MANAGER_TAG, indexAttribute: 'key')] private ServiceProviderInterface $deletableManagers,
     ) {
     }
 
@@ -33,8 +38,6 @@ class MutationFieldResolver
      */
     public function resolve(string $method, string $typeName, array $args, array $idFields = []): object
     {
-        $manager = $this->managers->get($typeName);
-
         /** @var list<\UnitEnum> $validationGroups */
         $validationGroups = $args['validationGroups'] ?? [];
         unset($args['validationGroups']);
@@ -43,9 +46,9 @@ class MutationFieldResolver
 
         try {
             return match ($method) {
-                'create' => $this->handleCreate($manager, $args, $validationGroups),
-                'update' => $this->handleUpdate($manager, $args, $validationGroups),
-                'delete' => $this->handleDelete($manager, $args),
+                'create' => $this->handleCreate($this->creatableManagers->get($typeName), $args, $validationGroups),
+                'update' => $this->handleUpdate($this->updatableManagers->get($typeName), $args, $validationGroups),
+                'delete' => $this->handleDelete($this->deletableManagers->get($typeName), $args),
                 default => throw new UnknownMutationMethodException($method),
             };
         } catch (ValidationFailedException $exception) {
@@ -57,10 +60,8 @@ class MutationFieldResolver
      * @param array<string, mixed> $args
      * @param list<\UnitEnum>      $validationGroups
      */
-    private function handleCreate(GlobalObjectManagerInterface $manager, array $args, array $validationGroups): object
+    private function handleCreate(CreatableManagerInterface $manager, array $args, array $validationGroups): object
     {
-        \assert($manager instanceof CreatableManagerInterface);
-
         /** @var object $dto */
         $dto = $this->denormalizer->denormalize($args, $manager::getManagedDataTransferObject());
 
@@ -68,11 +69,8 @@ class MutationFieldResolver
     }
 
     /** @param array<string, mixed> $args */
-    private function handleDelete(GlobalObjectManagerInterface $manager, array $args): object
+    private function handleDelete(DeletableManagerInterface $manager, array $args): object
     {
-        \assert($manager instanceof ReadableManagerInterface);
-        \assert($manager instanceof DeletableManagerInterface);
-
         /** @var string $nodeId */
         $nodeId = $args['id'];
         $id = $this->nodeIdResolver->decode($nodeId)->getId();
@@ -89,11 +87,8 @@ class MutationFieldResolver
      * @param array<string, mixed> $args
      * @param list<\UnitEnum>      $validationGroups
      */
-    private function handleUpdate(GlobalObjectManagerInterface $manager, array $args, array $validationGroups): object
+    private function handleUpdate(UpdatableManagerInterface $manager, array $args, array $validationGroups): object
     {
-        \assert($manager instanceof ReadableManagerInterface);
-        \assert($manager instanceof UpdatableManagerInterface);
-
         /** @var string $nodeId */
         $nodeId = $args['id'];
         $id = $this->nodeIdResolver->decode($nodeId)->getId();

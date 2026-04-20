@@ -16,4 +16,6 @@ interface GlobalObjectManagerInterface
 
     /** @return class-string */
     public static function getManagedDataTransferObject(): string;
+
+    public function read(string $id): ?object;
 }

@@ -99,6 +99,11 @@ class NestedConnectionManagerStub implements GlobalObjectManagerInterface
         return \stdClass::class;
     }
 
+    public function read(string $id): ?object
+    {
+        return null;
+    }
+
     /** @return PaginatedResults<GlobalObjectInterface> */
     #[AsConnection('children')]
     public function findByParent(object $source, CursorPaginationParams $params): PaginatedResults

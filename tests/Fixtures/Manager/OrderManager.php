@@ -25,4 +25,9 @@ class OrderManager implements GlobalObjectManagerInterface, CreatableManagerInte
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

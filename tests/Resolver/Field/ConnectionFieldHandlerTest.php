@@ -104,4 +104,9 @@ class ConnectionHandlerManagerStub implements GlobalObjectManagerInterface, List
     {
         return new PaginatedResults([], new PageInfo(false, null, null));
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

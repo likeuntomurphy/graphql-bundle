@@ -410,13 +410,21 @@ class MutationFieldResolverTest extends TestCase
         WidgetManagerStub $manager,
         ?DenormalizerInterface $denormalizer = null,
     ): MutationFieldResolver {
-        $managers = $this->createStub(ServiceProviderInterface::class);
-        $managers->method('get')->willReturn($manager);
-
         return new MutationFieldResolver(
             new NodeIdResolver($this->registry, new Base64NodeIdCodec()),
             $denormalizer ?? $this->createStub(DenormalizerInterface::class),
-            $managers,
+            $this->managerProvider($manager),
+            $this->managerProvider($manager),
+            $this->managerProvider($manager),
         );
+    }
+
+    /** @return ServiceProviderInterface<WidgetManagerStub> */
+    private function managerProvider(WidgetManagerStub $manager): ServiceProviderInterface
+    {
+        $provider = $this->createStub(ServiceProviderInterface::class);
+        $provider->method('get')->willReturn($manager);
+
+        return $provider;
     }
 }

@@ -25,4 +25,9 @@ class UnsupportedManager implements GlobalObjectManagerInterface, CreatableManag
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

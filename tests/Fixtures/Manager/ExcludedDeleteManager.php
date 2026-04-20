@@ -25,4 +25,9 @@ class ExcludedDeleteManager implements GlobalObjectManagerInterface, CreatableMa
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

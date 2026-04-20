@@ -6,6 +6,8 @@ namespace Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\ObjectType;
 use Likeuntomurphy\GraphQL\Attribute\AsConnection;
+use Likeuntomurphy\GraphQL\CreatableManagerInterface;
+use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\Exception\InvalidGlobalObjectException;
 use Likeuntomurphy\GraphQL\Exception\TypeNameCollisionException;
 use Likeuntomurphy\GraphQL\Field\NodeId;
@@ -15,6 +17,7 @@ use Likeuntomurphy\GraphQL\Model\ValidationError;
 use Likeuntomurphy\GraphQL\Model\ValidationErrorList;
 use Likeuntomurphy\GraphQL\Type\NodeInterface;
 use Likeuntomurphy\GraphQL\TypeRegistry;
+use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -23,6 +26,17 @@ use Symfony\Component\DependencyInjection\Reference;
 class GlobalObjectTypePass implements CompilerPassInterface
 {
     use TypeDefinitionTrait;
+
+    public const string CREATABLE_MANAGER_TAG = GlobalObjectManagerInterface::TAG.'.creatable';
+    public const string UPDATABLE_MANAGER_TAG = GlobalObjectManagerInterface::TAG.'.updatable';
+    public const string DELETABLE_MANAGER_TAG = GlobalObjectManagerInterface::TAG.'.deletable';
+
+    /** @var array<class-string, string> */
+    private const array NARROW_TAGS = [
+        CreatableManagerInterface::class => self::CREATABLE_MANAGER_TAG,
+        UpdatableManagerInterface::class => self::UPDATABLE_MANAGER_TAG,
+        DeletableManagerInterface::class => self::DELETABLE_MANAGER_TAG,
+    ];
 
     public function process(ContainerBuilder $container): void
     {
@@ -45,7 +59,14 @@ class GlobalObjectTypePass implements CompilerPassInterface
 
                 $classMap[$typeName] = $rc->getName();
 
-                $container->getDefinition($serviceId)->addTag(GlobalObjectManagerInterface::TAG, ['key' => $rc->getShortName()]);
+                $managerDefinition = $container->getDefinition($serviceId);
+                $managerDefinition->addTag(GlobalObjectManagerInterface::TAG, ['key' => $rc->getShortName()]);
+
+                foreach (self::NARROW_TAGS as $interface => $tag) {
+                    if (is_subclass_of($managerClass, $interface)) {
+                        $managerDefinition->addTag($tag, ['key' => $rc->getShortName()]);
+                    }
+                }
 
                 $skipFields = $connectionFieldMap[$typeName] ?? [];
 

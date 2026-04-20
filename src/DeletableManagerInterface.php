@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Likeuntomurphy\GraphQL;
 
-interface DeletableManagerInterface
+interface DeletableManagerInterface extends GlobalObjectManagerInterface
 {
     public function delete(object $document): object;
 }

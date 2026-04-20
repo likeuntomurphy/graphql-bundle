@@ -72,7 +72,6 @@ Public properties become GraphQL fields. Nullable properties become nullable fie
 
 ```php
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\ReadableManagerInterface;
 use Likeuntomurphy\GraphQL\ListableManagerInterface;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
@@ -80,7 +79,6 @@ use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 
 class WidgetManager implements
     GlobalObjectManagerInterface,
-    ReadableManagerInterface,
     CreatableManagerInterface,
     UpdatableManagerInterface,
     DeletableManagerInterface,
@@ -108,8 +106,7 @@ Each interface you implement generates schema elements:
 
 | Interface | Generates |
 |---|---|
-| `GlobalObjectManagerInterface` | Object type with `NodeInterface`, `node(id: ID!)` resolution |
-| `ReadableManagerInterface` | Node resolution by global ID |
+| `GlobalObjectManagerInterface` | Object type with `NodeInterface`, `node(id: ID!)` resolution via `read()` |
 | `ListableManagerInterface` | Root query field with cursor pagination (e.g. `widgets`) |
 | `CreatableManagerInterface` | Mutation field (e.g. `createWidget`) |
 | `UpdatableManagerInterface` | Mutation field (e.g. `updateWidget`) |

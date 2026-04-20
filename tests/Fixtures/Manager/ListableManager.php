@@ -29,4 +29,9 @@ class ListableManager implements GlobalObjectManagerInterface, ListableManagerIn
     {
         return new PaginatedResults([], new PageInfo(false, null, null));
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

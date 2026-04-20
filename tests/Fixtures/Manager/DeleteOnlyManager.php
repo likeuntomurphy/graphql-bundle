@@ -21,6 +21,11 @@ class DeleteOnlyManager implements GlobalObjectManagerInterface, DeletableManage
         return ProjectDto::class;
     }
 
+    public function read(string $id): ?object
+    {
+        return new \stdClass();
+    }
+
     public function delete(object $document): object
     {
         return new \stdClass();

@@ -25,4 +25,9 @@ class TicketManager implements GlobalObjectManagerInterface, CreatableManagerInt
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

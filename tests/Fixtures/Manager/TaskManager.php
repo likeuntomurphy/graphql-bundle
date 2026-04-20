@@ -18,4 +18,9 @@ class TaskManager implements GlobalObjectManagerInterface
     {
         return \stdClass::class;
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

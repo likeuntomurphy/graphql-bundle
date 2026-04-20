@@ -23,6 +23,11 @@ class CrudManager implements GlobalObjectManagerInterface, CreatableManagerInter
         return ProjectDto::class;
     }
 
+    public function read(string $id): ?object
+    {
+        return new \stdClass();
+    }
+
     public function create(object $dto, object $document, array $validationGroups = []): object
     {
         return new \stdClass();

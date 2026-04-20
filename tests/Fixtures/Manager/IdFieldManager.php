@@ -25,4 +25,9 @@ class IdFieldManager implements GlobalObjectManagerInterface, CreatableManagerIn
     {
         return new \stdClass();
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

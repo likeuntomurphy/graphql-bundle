@@ -38,4 +38,9 @@ class ConnectionFieldManager implements GlobalObjectManagerInterface, ListableMa
     {
         return new PaginatedResults([], new PageInfo(false, null, null));
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

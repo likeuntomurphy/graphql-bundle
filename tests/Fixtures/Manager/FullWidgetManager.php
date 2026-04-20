@@ -10,10 +10,9 @@ use Likeuntomurphy\GraphQL\ListableManagerInterface;
 use Likeuntomurphy\GraphQL\Model\PageInfo;
 use Likeuntomurphy\GraphQL\Pagination\CursorPaginationParams;
 use Likeuntomurphy\GraphQL\Pagination\PaginatedResults;
-use Likeuntomurphy\GraphQL\ReadableManagerInterface;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Widget;
 
-class FullWidgetManager implements GlobalObjectManagerInterface, ReadableManagerInterface, ListableManagerInterface, CreatableManagerInterface
+class FullWidgetManager implements GlobalObjectManagerInterface, ListableManagerInterface, CreatableManagerInterface
 {
     /** @var array<string, Widget> */
     private array $store = [];

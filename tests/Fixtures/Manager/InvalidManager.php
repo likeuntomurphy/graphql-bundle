@@ -17,4 +17,9 @@ class InvalidManager implements GlobalObjectManagerInterface
     {
         return 'App\Dto\NonExistent'; // @phpstan-ignore return.type
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }

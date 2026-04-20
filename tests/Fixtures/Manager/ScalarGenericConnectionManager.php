@@ -29,4 +29,9 @@ class ScalarGenericConnectionManager implements GlobalObjectManagerInterface
     {
         return new PaginatedResults([], new PageInfo(false, null, null));
     }
+
+    public function read(string $id): ?object
+    {
+        return null;
+    }
 }
