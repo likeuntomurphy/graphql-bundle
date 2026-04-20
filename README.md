@@ -32,6 +32,14 @@ At runtime, the `TypeRegistry` resolves types lazily via a `ServiceLocator`. Typ
 
 The bundle is **persistence-agnostic** — and more broadly, data source–agnostic. The only contract for a global object is implementing `GlobalObjectInterface`, which requires a single `getId()` method. A manager is free to read from a database, a document store, a REST API, a federated GraphQL service, an in-memory fixture, or anything else; the bundle doesn't know or care whether the manager persists anything at all.
 
+## Design principles
+
+Opinionated bundles are only useful if the opinions are legible. Beyond the compile-time schema construction and persistence-agnostic defaults described above, this bundle holds two load-bearing opinions:
+
+**1. Relay Connections are the canonical answer to lists-of-things-with-identity.** Pagination is not configurable — it is the default and the only path. If you don't need pagination today, you will tomorrow; building on connections from the start avoids the eventual rewrite when your list grows. When a consumer genuinely wants a flat list, `connection.edges[].node` gives it to them without the schema abandoning its stance.
+
+**2. Connection vs list is a question of identity, not size.** Relations to types implementing `GlobalObjectInterface` are always connections. Relations to local or embedded objects (types without independent identity) are always lists. Size is not a factor: a `User.orders` connection starts small but is unbounded; an `Order.lineItems` list is bounded by the parent's inherent data regardless of count. Mixing the axes leads to "why is this a connection when it has three items?" confusion; keeping the axis on identity keeps the schema coherent.
+
 ## Defining a global object
 
 A global object is any entity exposed through the GraphQL schema with a globally unique ID. It needs two things: a document class and a manager.
