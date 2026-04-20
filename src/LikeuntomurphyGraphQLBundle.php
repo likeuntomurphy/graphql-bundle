@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Likeuntomurphy\GraphQL;
 
+use Likeuntomurphy\GraphQL\Attribute\GlobalEnum;
 use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\ConnectionFieldPass;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\EnumTypePass;
@@ -30,6 +31,13 @@ class LikeuntomurphyGraphQLBundle extends Bundle
             GlobalObject::class,
             static function (ChildDefinition $def, GlobalObject $attr): void {
                 $def->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => $attr->manager]);
+            },
+        );
+
+        $container->registerAttributeForAutoconfiguration(
+            GlobalEnum::class,
+            static function (ChildDefinition $def): void {
+                $def->addResourceTag(GlobalEnum::RESOURCE_TAG);
             },
         );
 

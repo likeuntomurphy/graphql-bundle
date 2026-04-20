@@ -174,6 +174,25 @@ class WidgetColorResolver
 }
 ```
 
+### `#[GlobalEnum]`
+
+Registers a PHP enum as a GraphQL enum type without requiring it to be referenced by any field. Useful for enums that surface client-side (form options, dropdown values) but aren't the type of a document property or mutation arg.
+
+```php
+use Likeuntomurphy\GraphQL\Attribute\GlobalEnum;
+
+#[GlobalEnum]
+enum PaymentMethod: string
+{
+    case CreditCard = 'credit_card';
+    case WireTransfer = 'wire_transfer';
+}
+```
+
+Clients access values via standard GraphQL introspection: `{ __type(name: "PaymentMethod") { enumValues { name } } }`.
+
+Enums already referenced as property or argument types are picked up automatically without this attribute.
+
 ### `#[AsConnection(string $fieldName)]`
 
 Marks a manager method as a nested connection field on the parent type.

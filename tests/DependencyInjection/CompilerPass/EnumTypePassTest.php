@@ -6,6 +6,7 @@ namespace Likeuntomurphy\GraphQL\Tests\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\PhpEnumType;
+use Likeuntomurphy\GraphQL\Attribute\GlobalEnum;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\EnumTypePass;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Enum\Color;
 use Likeuntomurphy\GraphQL\TypeRegistry;
@@ -97,6 +98,24 @@ class EnumTypePassTest extends AbstractCompilerPassTestCase
         $this->compile();
 
         $this->addToAssertionCount(1);
+    }
+
+    public function testRegistersResourceTaggedEnum(): void
+    {
+        $this->container->setDefinition(
+            Color::class,
+            (new Definition(Color::class))->addResourceTag(GlobalEnum::RESOURCE_TAG),
+        );
+
+        $this->compile();
+
+        $this->assertContainerBuilderHasService(TypeRegistry::TAG.'.Color');
+
+        $definition = $this->container->findDefinition(TypeRegistry::TAG.'.Color');
+
+        $this->assertSame(PhpEnumType::class, $definition->getClass());
+        $this->assertSame(Color::class, $definition->getArgument(0));
+        $this->assertTrue($definition->isPublic());
     }
 
     protected function registerCompilerPass(ContainerBuilder $container): void
