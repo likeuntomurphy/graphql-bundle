@@ -12,6 +12,7 @@ use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Model\NodeNotFound;
 use Likeuntomurphy\GraphQL\Model\ValidationErrorList;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
+use Likeuntomurphy\GraphQL\ValidationGroupsAwareInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -46,15 +47,11 @@ class MutationFieldResolver
      */
     public function resolve(string $method, string $typeName, string $entityClass, array $args, array $relations = []): object
     {
-        /** @var list<\UnitEnum> $validationGroups */
-        $validationGroups = $args['validationGroups'] ?? [];
-        unset($args['validationGroups']);
-
         $args = $this->flattenEnums($args);
 
         return match ($method) {
-            'create' => $this->handleCreate($this->creatableManagers->get($typeName), $entityClass, $args, $relations, $validationGroups),
-            'update' => $this->handleUpdate($this->updatableManagers->get($typeName), $entityClass, $args, $relations, $validationGroups),
+            'create' => $this->handleCreate($this->creatableManagers->get($typeName), $entityClass, $args, $relations),
+            'update' => $this->handleUpdate($this->updatableManagers->get($typeName), $entityClass, $args, $relations),
             'delete' => $this->handleDelete($this->deletableManagers->get($typeName), $args),
             default => throw new UnknownMutationMethodException($method),
         };
@@ -64,9 +61,8 @@ class MutationFieldResolver
      * @param class-string                                           $entityClass
      * @param array<string, mixed>                                   $args
      * @param array<string, array{property: string, target: string}> $relations
-     * @param list<\UnitEnum>                                        $validationGroups
      */
-    private function handleCreate(CreatableManagerInterface $manager, string $entityClass, array $args, array $relations, array $validationGroups): object
+    private function handleCreate(CreatableManagerInterface $manager, string $entityClass, array $args, array $relations): object
     {
         [$args, $violations] = $this->resolveRelations($args, $relations);
 
@@ -77,7 +73,11 @@ class MutationFieldResolver
         /** @var object $document */
         $document = $this->denormalizer->denormalize($args, $entityClass, context: [AbstractNormalizer::OBJECT_TO_POPULATE => new $entityClass()]);
 
-        if ($errors = $this->validate($document, $validationGroups)) {
+        $groups = $manager instanceof ValidationGroupsAwareInterface
+            ? $manager->getValidationGroups('create', $document)
+            : ['Default', 'Create'];
+
+        if ($errors = $this->validate($document, $groups)) {
             return $errors;
         }
 
@@ -88,9 +88,8 @@ class MutationFieldResolver
      * @param class-string                                           $entityClass
      * @param array<string, mixed>                                   $args
      * @param array<string, array{property: string, target: string}> $relations
-     * @param list<\UnitEnum>                                        $validationGroups
      */
-    private function handleUpdate(UpdatableManagerInterface $manager, string $entityClass, array $args, array $relations, array $validationGroups): object
+    private function handleUpdate(UpdatableManagerInterface $manager, string $entityClass, array $args, array $relations): object
     {
         /** @var string $nodeId */
         $nodeId = $args['id'];
@@ -111,7 +110,11 @@ class MutationFieldResolver
 
         $this->denormalizer->denormalize($args, $entityClass, context: [AbstractNormalizer::OBJECT_TO_POPULATE => $document]);
 
-        if ($errors = $this->validate($document, $validationGroups)) {
+        $groups = $manager instanceof ValidationGroupsAwareInterface
+            ? $manager->getValidationGroups('update', $document)
+            : ['Default', 'Update'];
+
+        if ($errors = $this->validate($document, $groups)) {
             return $errors;
         }
 
@@ -186,10 +189,9 @@ class MutationFieldResolver
         return [$args, $violations];
     }
 
-    /** @param list<\UnitEnum> $validationGroups */
-    private function validate(object $document, array $validationGroups): ?ValidationErrorList
+    /** @param list<string> $groups */
+    private function validate(object $document, array $groups): ?ValidationErrorList
     {
-        $groups = array_map(static fn (\UnitEnum $g): string => $g->name, $validationGroups);
         $violations = $this->validator->validate($document, null, $groups);
 
         if (0 === \count($violations)) {

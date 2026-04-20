@@ -192,23 +192,39 @@ class WidgetManager implements GlobalObjectManagerInterface
 
 This generates a `parts` field on the `Widget` type with standard cursor pagination arguments (`first`, `after`). The method's generic return type determines the child type.
 
-## Validation groups
+## Validation
 
-Implement `ValidatableManagerInterface` to add a `validationGroups` argument to create/update mutations:
+Mutations validate the denormalized entity before calling the manager. Group selection follows Symfony conventions:
+
+- `create` mutations apply groups `['Default', 'Create']`
+- `update` mutations apply groups `['Default', 'Update']`
+
+Tag constraints to target a specific method:
 
 ```php
-use Likeuntomurphy\GraphQL\ValidatableManagerInterface;
-
-class WidgetManager implements GlobalObjectManagerInterface, CreatableManagerInterface, ValidatableManagerInterface
+class Widget
 {
-    public static function getValidationGroupEnum(): string
-    {
-        return WidgetValidationGroup::class;
-    }
+    #[Assert\NotBlank]                         // always
+    public string $name;
+
+    #[Assert\NotBlank(groups: ['Create'])]     // create only
+    public string $sku;
 }
 ```
 
-The enum is exposed as a GraphQL enum type, and the mutation accepts a list of its cases (`[WidgetValidationGroup!]`). The selected cases are passed directly as the `$validationGroups` parameter to `create()` and `update()`.
+For conditional groups (e.g., based on entity state), implement `ValidationGroupsAwareInterface` on the manager:
+
+```php
+use Likeuntomurphy\GraphQL\ValidationGroupsAwareInterface;
+
+class WidgetManager implements GlobalObjectManagerInterface, CreatableManagerInterface, ValidationGroupsAwareInterface
+{
+    public function getValidationGroups(string $method, object $document): array
+    {
+        return $document->isDraft ? ['Default', 'Draft'] : ['Default', ucfirst($method)];
+    }
+}
+```
 
 ## Mutation results
 

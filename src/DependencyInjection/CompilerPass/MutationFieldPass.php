@@ -21,7 +21,6 @@ use Likeuntomurphy\GraphQL\Type\NodeNotFound;
 use Likeuntomurphy\GraphQL\Type\ValidationErrorList;
 use Likeuntomurphy\GraphQL\TypeRegistry;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
-use Likeuntomurphy\GraphQL\ValidatableManagerInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -79,15 +78,6 @@ class MutationFieldPass implements CompilerPassInterface
                         'delete' => $idArg,
                         default => $idArg + $payloadFields,
                     };
-
-                    if ('delete' !== $method && is_subclass_of($managerClass, ValidatableManagerInterface::class)) {
-                        $enumClass = $managerClass::getValidationGroupEnum();
-
-                        /** @var \ReflectionClass<object> $rc */
-                        $rc = new \ReflectionClass($enumClass);
-                        $ref = $this->ensureEnumTypeResolved($rc, $container);
-                        $args['validationGroups'] = ['type' => $this->listOf($this->nonNull($ref, $container), $container)];
-                    }
 
                     $handlerId = 'graphql.mutation.handler.'.$fieldName;
                     $definitions[$handlerId] = new Definition(MutationFieldHandler::class, [

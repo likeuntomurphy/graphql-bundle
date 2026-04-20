@@ -6,7 +6,6 @@ namespace Likeuntomurphy\GraphQL\Tests\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\ObjectType;
-use GraphQL\Type\Definition\PhpEnumType;
 use GraphQL\Type\Definition\Type;
 use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\MutationFieldPass;
@@ -33,7 +32,6 @@ use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\OrderManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ReadonlyManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\TicketManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\UnsupportedManager;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ValidatableCreateManager;
 use Likeuntomurphy\GraphQL\Type\Mutation;
 use Likeuntomurphy\GraphQL\Type\ValidationErrorList;
 use Likeuntomurphy\GraphQL\TypeRegistry;
@@ -194,46 +192,6 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
         $this->assertTrue($this->container->hasDefinition('graphql.mutation.field.createProject'));
         $this->assertFalse($this->container->hasDefinition('graphql.mutation.field.deleteProject'));
-    }
-
-    public function testValidationGroupsArgWhenManagerIsValidatable(): void
-    {
-        $this->registerEntity(Project::class, ValidatableCreateManager::class);
-        $this->registerObjectType('Project');
-
-        $this->compile();
-
-        $config = $this->container->findDefinition('graphql.mutation.field.createProject')->getArgument(0);
-
-        $this->assertArrayHasKey('validationGroups', $config['args']);
-        $this->assertSame(TypeRegistry::TAG.'.ProjectValidationGroup.non_null.list_of', (string) $config['args']['validationGroups']['type']);
-    }
-
-    public function testValidationGroupEnumIsRegisteredAsType(): void
-    {
-        $this->registerEntity(Project::class, ValidatableCreateManager::class);
-        $this->registerObjectType('Project');
-
-        $this->compile();
-
-        $this->assertContainerBuilderHasService(TypeRegistry::TAG.'.ProjectValidationGroup');
-
-        $definition = $this->container->findDefinition(TypeRegistry::TAG.'.ProjectValidationGroup');
-
-        $this->assertSame(PhpEnumType::class, $definition->getClass());
-        $this->assertTrue($definition->isPublic());
-    }
-
-    public function testNoValidationGroupsArgWhenManagerIsNotValidatable(): void
-    {
-        $this->registerEntity(Project::class, CreateOnlyManager::class);
-        $this->registerObjectType('Project');
-
-        $this->compile();
-
-        $config = $this->container->findDefinition('graphql.mutation.field.createProject')->getArgument(0);
-
-        $this->assertArrayNotHasKey('validationGroups', $config['args']);
     }
 
     public function testNestedObjectCreatesInputType(): void

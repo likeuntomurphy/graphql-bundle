@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Enum;
 
-enum ProjectValidationGroup
+enum Tier
 {
-    case Default;
+    case Basic;
+    case Premium;
 }
