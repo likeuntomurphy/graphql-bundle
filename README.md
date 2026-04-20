@@ -26,11 +26,15 @@ return [
 
 ## How it works
 
-The entire GraphQL schema is built at **container compile time** through a series of compiler passes — no schema is constructed or rebuilt at runtime. The bundle scans for services tagged with `graphql.global_object_manager`, uses reflection to inspect your PHP classes, and registers every object type, input type, connection type, enum, query field, and mutation field as tagged service definitions in the container. Manager interfaces declare what operations each type supports (read, create, update, delete, list), and the compiler passes generate the corresponding schema elements automatically.
+The schema is a container artifact. Every object type, input type, connection, enum, query field, and mutation field is registered as a tagged service definition by a compiler pass — there is no schema assembly, reflection scan, or attribute parsing at request time.
 
-At runtime, the `TypeRegistry` resolves types lazily via a `ServiceLocator`. Types are instantiated only when first accessed during query execution, not upfront. This means the compiled container holds the full schema definition, but individual type objects are created on demand — keeping memory usage proportional to the query being executed rather than the total schema size.
+- **Compile once, serve many.** The schema is built during container compilation and cached with the container. Production deploys warm it; requests consume it.
+- **Zero per-request discovery.** Managers, types, and field handlers are already wired as services or service-locator entries by the time a request arrives. The resolver just asks the container.
+- **Lazy type instantiation.** `TypeRegistry` resolves types through a `ServiceLocator`, so individual type objects are only materialized when a query actually touches them. Memory scales with the query, not the schema.
+- **Debuggable via standard tooling.** `debug:container graphql.type.*`, `graphql.mutation.field.*`, and `graphql.global_object_manager` show you the live schema. Nothing is hidden in a runtime registry.
+- **Symfony-native extension.** Attributes autoconfigure managers, compiler passes generate schema elements, standard service decoration overrides them. No parallel DI, no custom kernel.
 
-The bundle is **persistence-agnostic** — and more broadly, data source–agnostic. The only contract for a global object is implementing `GlobalObjectInterface`, which requires a single `getId()` method. A manager is free to read from a database, a document store, a REST API, a federated GraphQL service, an in-memory fixture, or anything else; the bundle doesn't know or care whether the manager persists anything at all.
+The bundle is also **data-source agnostic.** The only contract for a global object is `GlobalObjectInterface::getId()`. A manager can read from a database, a document store, a REST API, a federated GraphQL service, an in-memory fixture, or anything else — the bundle doesn't know or care whether it persists anything at all.
 
 ## Design principles
 
@@ -99,7 +103,7 @@ class WidgetManager implements
 Each interface you implement generates schema elements:
 
 | Interface | Generates |
-|---|---|
+| --- | --- |
 | `GlobalObjectManagerInterface` | Object type with `NodeInterface`, `node(id: ID!)` resolution via `read()` |
 | `ListableManagerInterface` | Root query field with cursor pagination (e.g. `widgets`) |
 | `CreatableManagerInterface` | Mutation field (e.g. `createWidget`) |
