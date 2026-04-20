@@ -6,7 +6,6 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Dto\AttachmentDto;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Attachment;
 
 class IdFieldManager implements GlobalObjectManagerInterface, CreatableManagerInterface
@@ -16,12 +15,7 @@ class IdFieldManager implements GlobalObjectManagerInterface, CreatableManagerIn
         return Attachment::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return AttachmentDto::class;
-    }
-
-    public function create(object $dto, object $document, array $validationGroups = []): object
+    public function create(object $document): object
     {
         return new \stdClass();
     }

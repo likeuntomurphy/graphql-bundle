@@ -231,13 +231,13 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
     public function testNestedObjectCreatesInputType(): void
     {
         $this->registerManager(OrderManager::class);
-        $this->registerObjectType('Project');
+        $this->registerObjectType('Order');
 
         $this->compile();
 
-        $this->assertTrue($this->container->hasDefinition(TypeRegistry::TAG.'.AddressDtoInput'));
+        $this->assertTrue($this->container->hasDefinition(TypeRegistry::TAG.'.AddressInput'));
 
-        $definition = $this->container->findDefinition(TypeRegistry::TAG.'.AddressDtoInput');
+        $definition = $this->container->findDefinition(TypeRegistry::TAG.'.AddressInput');
 
         $this->assertSame(InputObjectType::class, $definition->getClass());
         $this->assertTrue($definition->isPublic());
@@ -246,23 +246,23 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
     public function testInputTypeNameHasSuffix(): void
     {
         $this->registerManager(OrderManager::class);
-        $this->registerObjectType('Project');
+        $this->registerObjectType('Order');
 
         $this->compile();
 
-        $config = $this->container->findDefinition(TypeRegistry::TAG.'.AddressDtoInput')->getArgument(0);
+        $config = $this->container->findDefinition(TypeRegistry::TAG.'.AddressInput')->getArgument(0);
 
-        $this->assertSame('AddressDtoInput', $config['name']);
+        $this->assertSame('AddressInput', $config['name']);
     }
 
     public function testEnumPropertyResolvesToTypeReference(): void
     {
         $this->registerManager(TicketManager::class);
-        $this->registerObjectType('Project');
+        $this->registerObjectType('Ticket');
 
         $this->compile();
 
-        $config = $this->container->findDefinition('graphql.mutation.field.createProject')->getArgument(0);
+        $config = $this->container->findDefinition('graphql.mutation.field.createTicket')->getArgument(0);
 
         $this->assertSame(TypeRegistry::TAG.'.Priority.non_null', (string) $config['args']['priority']['type']);
     }
@@ -270,11 +270,11 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
     public function testReadonlyPropertyIsSkipped(): void
     {
         $this->registerManager(ReadonlyManager::class);
-        $this->registerObjectType('Project');
+        $this->registerObjectType('ReadonlyDocument');
 
         $this->compile();
 
-        $config = $this->container->findDefinition('graphql.mutation.field.createProject')->getArgument(0);
+        $config = $this->container->findDefinition('graphql.mutation.field.createReadonlyDocument')->getArgument(0);
 
         $this->assertArrayHasKey('label', $config['args']);
         $this->assertArrayNotHasKey('ref', $config['args']);
@@ -283,11 +283,11 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
     public function testNullablePropertyIsNotNonNull(): void
     {
         $this->registerManager(NullableManager::class);
-        $this->registerObjectType('Project');
+        $this->registerObjectType('NullableDocument');
 
         $this->compile();
 
-        $config = $this->container->findDefinition('graphql.mutation.field.createProject')->getArgument(0);
+        $config = $this->container->findDefinition('graphql.mutation.field.createNullableDocument')->getArgument(0);
         $ref = $config['args']['body']['type'];
 
         $this->assertSame(TypeRegistry::TAG.'.'.Type::STRING, (string) $ref);
@@ -296,7 +296,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
     public function testThrowsForUnsupportedType(): void
     {
         $this->registerManager(UnsupportedManager::class);
-        $this->registerObjectType('Project');
+        $this->registerObjectType('UnsupportedDocument');
 
         $this->expectException(UnsupportedTypeException::class);
 
@@ -347,7 +347,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertSame(TypeRegistry::TAG.'.String.non_null', (string) $config['args']['url']['type']);
     }
 
-    public function testIdFieldNamesPassedToHandler(): void
+    public function testRelationMapPassedToHandler(): void
     {
         $this->registerManager(IdFieldManager::class);
         $this->registerObjectType('Attachment');
@@ -356,7 +356,7 @@ class MutationFieldPassTest extends AbstractCompilerPassTestCase
 
         $handler = $this->container->findDefinition('graphql.mutation.handler.createAttachment');
 
-        $this->assertSame(['projectId'], $handler->getArgument(3));
+        $this->assertSame(['projectId' => ['property' => 'project', 'target' => 'Project']], $handler->getArgument(3));
     }
 
     protected function registerCompilerPass(ContainerBuilder $container): void

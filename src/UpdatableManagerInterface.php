@@ -6,6 +6,5 @@ namespace Likeuntomurphy\GraphQL;
 
 interface UpdatableManagerInterface extends GlobalObjectManagerInterface
 {
-    /** @param list<\UnitEnum> $validationGroups */
-    public function update(object $dto, object $document, array $validationGroups = []): object;
+    public function update(object $document): object;
 }

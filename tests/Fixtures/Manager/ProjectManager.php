@@ -14,11 +14,6 @@ class ProjectManager implements GlobalObjectManagerInterface
         return Project::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return \stdClass::class;
-    }
-
     public function read(string $id): ?object
     {
         return null;

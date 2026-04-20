@@ -47,9 +47,11 @@ A global object is any entity exposed through the GraphQL schema with a globally
 ### Document
 
 ```php
-use Likeuntomurphy\GraphQL\GlobalObjectInterface;
 use Likeuntomurphy\GraphQL\Attribute as GraphQL;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
+use Likeuntomurphy\GraphQL\GlobalObjectInterface;
 
+#[GlobalObject(manager: WidgetManager::class)]
 class Widget implements GlobalObjectInterface
 {
     public protected(set) string $id;
@@ -66,7 +68,9 @@ class Widget implements GlobalObjectInterface
 }
 ```
 
-Public properties become GraphQL fields. Nullable properties become nullable fields. The `id` field is automatically replaced with a Relay-style global ID (`base64("TypeName:rawId")`).
+The `#[GlobalObject]` attribute is the discovery entry point — the bundle finds entities via Symfony 7.3 resource-tag autoconfiguration and links each to its manager. Entities are never instantiated by the container.
+
+Public properties become GraphQL fields. Nullable properties become nullable fields. The `id` field is automatically replaced with a Relay-style global ID (`base64("TypeName:rawId")`). The same properties are reflected as input fields for create and update mutations — readonly, excluded, and `id` properties are filtered out of mutation args. Declare Symfony Validator constraints on the document's properties; the resolver validates the populated document before handing it to the manager.
 
 ### Manager
 
@@ -84,19 +88,9 @@ class WidgetManager implements
     DeletableManagerInterface,
     ListableManagerInterface
 {
-    public static function getManagedGlobalObject(): string
-    {
-        return Widget::class;
-    }
-
-    public static function getManagedDataTransferObject(): string
-    {
-        return WidgetDto::class;
-    }
-
     public function read(string $id): ?object { /* ... */ }
-    public function create(object $dto, object $document, array $validationGroups = []): object { /* ... */ }
-    public function update(object $dto, object $document, array $validationGroups = []): object { /* ... */ }
+    public function create(object $document): object { /* ... */ }
+    public function update(object $document): object { /* ... */ }
     public function delete(object $document): object { /* ... */ }
     public function list(CursorPaginationParams $params, ?callable $filter = null): PaginatedResults { /* ... */ }
 }
@@ -141,19 +135,23 @@ Overrides the GraphQL type name (defaults to the class short name).
 class Widget { /* ... */ }
 ```
 
-### `#[IdField]`
+### Relations
 
-Marks a DTO property as a global ID field. The bundle automatically decodes it from the Relay global ID format before passing it to the manager.
+Typed references between global objects are inferred automatically. If a property on one global object is typed to another class that also carries `#[GlobalObject]`, the bundle generates an `{propertyName}Id: ID` mutation arg, decodes the incoming node ID, and resolves the target via the referenced class's manager before handing the populated entity to the current manager.
 
 ```php
-class WidgetDto
+#[GlobalObject(manager: AttachmentManager::class)]
+class Attachment implements GlobalObjectInterface
 {
-    #[GraphQL\IdField]
-    public string $parentId;
+    protected string $id;
 
-    public string $name;
+    public Project $project;
+
+    public string $url;
 }
 ```
+
+On a `createAttachment` mutation, clients send `projectId: ID!`; the bundle resolves it to a `Project` instance via `ProjectManager::read()` and sets `$attachment->project`. If the ID doesn't resolve, the mutation returns a `ValidationErrorList` with a constraint violation on the property.
 
 ### `#[Resolver(string $resolver)]`
 

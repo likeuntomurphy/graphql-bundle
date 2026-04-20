@@ -6,7 +6,6 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Dto\ProjectDto;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 
 class CreateOnlyManager implements GlobalObjectManagerInterface, CreatableManagerInterface
@@ -16,12 +15,7 @@ class CreateOnlyManager implements GlobalObjectManagerInterface, CreatableManage
         return Project::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return ProjectDto::class;
-    }
-
-    public function create(object $dto, object $document, array $validationGroups = []): object
+    public function create(object $document): object
     {
         return new \stdClass();
     }

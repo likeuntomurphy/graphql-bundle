@@ -7,6 +7,7 @@ namespace Likeuntomurphy\GraphQL\Tests\Resolver\Field;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
 use Likeuntomurphy\GraphQL\Exception\UnknownMutationMethodException;
+use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Model\NodeNotFound;
 use Likeuntomurphy\GraphQL\Model\ValidationErrorList;
 use Likeuntomurphy\GraphQL\Resolver\Field\Base64NodeIdCodec;
@@ -14,15 +15,18 @@ use Likeuntomurphy\GraphQL\Resolver\Field\MutationFieldResolver;
 use Likeuntomurphy\GraphQL\Resolver\Field\NodeIdResolver;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Enum\Color;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Enum\ProjectValidationGroup;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\StubDocument;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\WidgetManagerStub;
 use Likeuntomurphy\GraphQL\TypeRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
-use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
 /**
@@ -45,15 +49,6 @@ class MutationFieldResolverTest extends TestCase
 
     public function testCreateCallsManagerCreate(): void
     {
-        $dto = new \stdClass();
-        $dto->name = 'new-widget';
-
-        $createdWidget = new \stdClass();
-        $createdWidget->id = '1';
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturn($dto);
-
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
@@ -61,121 +56,44 @@ class MutationFieldResolverTest extends TestCase
 
         $manager->expects(self::once())
             ->method('create')
-            ->with($dto, self::isInstanceOf(\stdClass::class), [])
-            ->willReturn($createdWidget)
-        ;
-
-        $resolver = $this->buildResolver($manager, $denormalizer);
-
-        $result = $resolver->resolve('create', 'Widget', ['name' => 'new-widget']);
-
-        $this->assertSame($createdWidget, $result);
-    }
-
-    public function testCreatePassesValidationGroups(): void
-    {
-        $dto = new \stdClass();
-        $createdWidget = new \stdClass();
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturn($dto);
-
-        $manager = $this->getMockBuilder(WidgetManagerStub::class)
-            ->onlyMethods(['read', 'create', 'update', 'delete'])
-            ->getMock()
-        ;
-
-        $manager->expects(self::once())
-            ->method('create')
-            ->with($dto, self::isInstanceOf(\stdClass::class), [ProjectValidationGroup::Default])
-            ->willReturn($createdWidget)
-        ;
-
-        $resolver = $this->buildResolver($manager, $denormalizer);
-
-        $result = $resolver->resolve('create', 'Widget', ['name' => 'foo', 'validationGroups' => [ProjectValidationGroup::Default]]);
-
-        $this->assertSame($createdWidget, $result);
-    }
-
-    public function testUpdateCallsManagerUpdate(): void
-    {
-        $existingWidget = new \stdClass();
-        $existingWidget->id = '42';
-
-        $dto = new \stdClass();
-        $dto->name = 'updated';
-
-        $updatedWidget = new \stdClass();
-        $updatedWidget->id = '42';
-        $updatedWidget->name = 'updated';
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturn($dto);
-
-        $manager = $this->getMockBuilder(WidgetManagerStub::class)
-            ->onlyMethods(['read', 'create', 'update', 'delete'])
-            ->getMock()
-        ;
-
-        $manager->expects(self::once())
-            ->method('read')
-            ->with('42')
-            ->willReturn($existingWidget)
-        ;
-
-        $manager->expects(self::once())
-            ->method('update')
-            ->with($dto, $existingWidget, [])
-            ->willReturn($updatedWidget)
-        ;
-
-        $resolver = $this->buildResolver($manager, $denormalizer);
-
-        $result = $resolver->resolve('update', 'Widget', ['id' => base64_encode('Widget:42'), 'name' => 'updated']);
-
-        $this->assertSame($updatedWidget, $result);
-    }
-
-    public function testDeleteCallsManagerDelete(): void
-    {
-        $existingWidget = new \stdClass();
-        $existingWidget->id = '42';
-
-        $deletedWidget = new \stdClass();
-
-        $manager = $this->getMockBuilder(WidgetManagerStub::class)
-            ->onlyMethods(['read', 'create', 'update', 'delete'])
-            ->getMock()
-        ;
-
-        $manager->expects(self::once())
-            ->method('read')
-            ->with('42')
-            ->willReturn($existingWidget)
-        ;
-
-        $manager->expects(self::once())
-            ->method('delete')
-            ->with($existingWidget)
-            ->willReturn($deletedWidget)
+            ->with(self::callback(
+                fn (object $document): bool => 'new-widget' === ($document->name ?? null),
+            ))
+            ->willReturnArgument(0)
         ;
 
         $resolver = $this->buildResolver($manager);
 
-        $result = $resolver->resolve('delete', 'Widget', ['id' => base64_encode('Widget:42')]);
+        $result = $resolver->resolve('create', 'Widget', ['name' => 'new-widget']);
 
-        $this->assertSame($deletedWidget, $result);
+        $this->assertSame('new-widget', $result->name ?? null);
     }
 
-    public function testReturnsValidationErrorListOnCreateFailure(): void
+    #[AllowMockObjectsWithoutExpectations]
+    public function testValidatorReceivesGroupsFromArgs(): void
     {
-        $violations = new ConstraintViolationList([
-            new ConstraintViolation('must not be blank', '', [], null, 'name', null),
-        ]);
+        $validator = $this->createMock(ValidatorInterface::class);
+        $validator->expects(self::once())
+            ->method('validate')
+            ->with(self::isInstanceOf(StubDocument::class), null, ['Default'])
+            ->willReturn(new ConstraintViolationList())
+        ;
 
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturn(new \stdClass());
+        $manager = $this->getMockBuilder(WidgetManagerStub::class)
+            ->onlyMethods(['read', 'create', 'update', 'delete'])
+            ->getMock()
+        ;
+        $manager->method('create')->willReturnArgument(0);
+
+        $resolver = $this->buildResolver($manager, validator: $validator);
+
+        $resolver->resolve('create', 'Widget', ['name' => 'foo', 'validationGroups' => [ProjectValidationGroup::Default]]);
+    }
+
+    public function testUpdateCallsManagerUpdateWithMergedDocument(): void
+    {
+        $existing = new StubDocument();
+        $existing->name = 'old';
 
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
@@ -183,29 +101,27 @@ class MutationFieldResolverTest extends TestCase
         ;
 
         $manager->expects(self::once())
-            ->method('create')
-            ->willThrowException(new ValidationFailedException('', $violations))
+            ->method('read')
+            ->with('42')
+            ->willReturn($existing)
         ;
 
-        $resolver = $this->buildResolver($manager, $denormalizer);
+        $manager->expects(self::once())
+            ->method('update')
+            ->with(self::identicalTo($existing))
+            ->willReturnArgument(0)
+        ;
 
-        $result = $resolver->resolve('create', 'Widget', ['name' => '']);
+        $resolver = $this->buildResolver($manager);
 
-        $this->assertInstanceOf(ValidationErrorList::class, $result);
-        $this->assertCount(1, $result->errors);
-        $this->assertSame('name', $result->errors[0]->path);
-        $this->assertSame('must not be blank', $result->errors[0]->message);
+        $result = $resolver->resolve('update', 'Widget', ['id' => base64_encode('Widget:42'), 'name' => 'new']);
+
+        $this->assertSame('new', $existing->name);
+        $this->assertSame($existing, $result);
     }
 
-    public function testReturnsValidationErrorListOnUpdateFailure(): void
+    public function testDeleteCallsManagerDelete(): void
     {
-        $violations = new ConstraintViolationList([
-            new ConstraintViolation('too short', '', [], null, 'name', null),
-        ]);
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturn(new \stdClass());
-
         $existing = new \stdClass();
 
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
@@ -213,36 +129,73 @@ class MutationFieldResolverTest extends TestCase
             ->getMock()
         ;
 
-        $manager->method('read')->willReturn($existing);
+        $manager->expects(self::once())->method('read')->with('42')->willReturn($existing);
+        $manager->expects(self::once())->method('delete')->with(self::identicalTo($existing))->willReturnArgument(0);
 
-        $manager->expects(self::once())
-            ->method('update')
-            ->willThrowException(new ValidationFailedException('', $violations))
+        $resolver = $this->buildResolver($manager);
+
+        $result = $resolver->resolve('delete', 'Widget', ['id' => base64_encode('Widget:42')]);
+
+        $this->assertSame($existing, $result);
+    }
+
+    public function testReturnsValidationErrorListWhenValidatorReturnsViolationsOnCreate(): void
+    {
+        $violations = new ConstraintViolationList([
+            new ConstraintViolation('must not be blank', '', [], null, 'name', null),
+        ]);
+
+        $validator = $this->createStub(ValidatorInterface::class);
+        $validator->method('validate')->willReturn($violations);
+
+        $manager = $this->getMockBuilder(WidgetManagerStub::class)
+            ->onlyMethods(['read', 'create', 'update', 'delete'])
+            ->getMock()
         ;
+        $manager->expects(self::never())->method('create');
 
-        $resolver = $this->buildResolver($manager, $denormalizer);
+        $resolver = $this->buildResolver($manager, validator: $validator);
+
+        $result = $resolver->resolve('create', 'Widget', ['name' => '']);
+
+        $this->assertInstanceOf(ValidationErrorList::class, $result);
+        $this->assertCount(1, $result->errors);
+        $this->assertSame('name', $result->errors[0]->path);
+    }
+
+    public function testReturnsValidationErrorListWhenValidatorReturnsViolationsOnUpdate(): void
+    {
+        $violations = new ConstraintViolationList([
+            new ConstraintViolation('too short', '', [], null, 'name', null),
+        ]);
+
+        $validator = $this->createStub(ValidatorInterface::class);
+        $validator->method('validate')->willReturn($violations);
+
+        $existing = new \stdClass();
+
+        $manager = $this->getMockBuilder(WidgetManagerStub::class)
+            ->onlyMethods(['read', 'create', 'update', 'delete'])
+            ->getMock()
+        ;
+        $manager->method('read')->willReturn($existing);
+        $manager->expects(self::never())->method('update');
+
+        $resolver = $this->buildResolver($manager, validator: $validator);
 
         $result = $resolver->resolve('update', 'Widget', ['id' => base64_encode('Widget:42'), 'name' => 'x']);
 
         $this->assertInstanceOf(ValidationErrorList::class, $result);
         $this->assertCount(1, $result->errors);
-        $this->assertSame('name', $result->errors[0]->path);
-        $this->assertSame('too short', $result->errors[0]->message);
     }
 
-    public function testCreateDecodesIdFields(): void
+    public function testCreateResolvesRelationToReferencedObject(): void
     {
-        $dto = new \stdClass();
-        $createdWidget = new \stdClass();
+        $project = new \stdClass();
+        $project->id = '99';
 
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturnCallback(
-            function (array $data) use ($dto) {
-                $dto->projectId = $data['projectId'];
-
-                return $dto;
-            },
-        );
+        $projectManager = $this->createStub(GlobalObjectManagerInterface::class);
+        $projectManager->method('read')->willReturn($project);
 
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
@@ -251,14 +204,45 @@ class MutationFieldResolverTest extends TestCase
 
         $manager->expects(self::once())
             ->method('create')
-            ->willReturn($createdWidget)
+            ->with(self::callback(
+                fn (object $document): bool => $project === ($document->project ?? null),
+            ))
+            ->willReturnArgument(0)
         ;
 
-        $resolver = $this->buildResolver($manager, $denormalizer);
+        $resolver = $this->buildResolverWithRelationManager($manager, $projectManager);
 
-        $resolver->resolve('create', 'Widget', ['projectId' => base64_encode('Widget:99'), 'name' => 'foo'], ['projectId']);
+        $resolver->resolve(
+            'create',
+            'Widget',
+            ['projectId' => base64_encode('Widget:99'), 'name' => 'foo'],
+            ['projectId' => ['property' => 'project', 'target' => 'Project']],
+        );
+    }
 
-        $this->assertSame('99', $dto->projectId);
+    public function testCreateReturnsValidationErrorWhenRelationTargetMissing(): void
+    {
+        $projectManager = $this->createStub(GlobalObjectManagerInterface::class);
+        $projectManager->method('read')->willReturn(null);
+
+        $manager = $this->getMockBuilder(WidgetManagerStub::class)
+            ->onlyMethods(['read', 'create', 'update', 'delete'])
+            ->getMock()
+        ;
+        $manager->expects(self::never())->method('create');
+
+        $resolver = $this->buildResolverWithRelationManager($manager, $projectManager);
+
+        $result = $resolver->resolve(
+            'create',
+            'Widget',
+            ['projectId' => base64_encode('Widget:99'), 'name' => 'foo'],
+            ['projectId' => ['property' => 'project', 'target' => 'Project']],
+        );
+
+        $this->assertInstanceOf(ValidationErrorList::class, $result);
+        $this->assertCount(1, $result->errors);
+        $this->assertSame('project', $result->errors[0]->path);
     }
 
     public function testUpdateReturnsNodeNotFoundWhenDocumentMissing(): void
@@ -267,13 +251,7 @@ class MutationFieldResolverTest extends TestCase
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
         ;
-
-        $manager->expects(self::once())
-            ->method('read')
-            ->with('42')
-            ->willReturn(null)
-        ;
-
+        $manager->method('read')->willReturn(null);
         $manager->expects(self::never())->method('update');
 
         $resolver = $this->buildResolver($manager);
@@ -291,13 +269,7 @@ class MutationFieldResolverTest extends TestCase
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
         ;
-
-        $manager->expects(self::once())
-            ->method('read')
-            ->with('42')
-            ->willReturn(null)
-        ;
-
+        $manager->method('read')->willReturn(null);
         $manager->expects(self::never())->method('delete');
 
         $resolver = $this->buildResolver($manager);
@@ -312,88 +284,61 @@ class MutationFieldResolverTest extends TestCase
     #[AllowMockObjectsWithoutExpectations]
     public function testFlattensBackedEnumToValue(): void
     {
-        $dto = new \stdClass();
-        $createdWidget = new \stdClass();
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturnCallback(
-            function (array $data) use ($dto) {
-                $dto->color = $data['color'];
-
-                return $dto;
-            },
-        );
-
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
         ;
+        $manager->expects(self::once())
+            ->method('create')
+            ->with(self::callback(
+                fn (object $document): bool => 'red' === ($document->color ?? null),
+            ))
+            ->willReturnArgument(0)
+        ;
 
-        $manager->method('create')->willReturn($createdWidget);
-
-        $resolver = $this->buildResolver($manager, $denormalizer);
+        $resolver = $this->buildResolver($manager);
 
         $resolver->resolve('create', 'Widget', ['color' => Color::Red]);
-
-        $this->assertSame('red', $dto->color);
     }
 
     #[AllowMockObjectsWithoutExpectations]
     public function testFlattensUnitEnumToName(): void
     {
-        $dto = new \stdClass();
-        $createdWidget = new \stdClass();
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturnCallback(
-            function (array $data) use ($dto) {
-                $dto->group = $data['group'];
-
-                return $dto;
-            },
-        );
-
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
         ;
+        $manager->expects(self::once())
+            ->method('create')
+            ->with(self::callback(
+                fn (object $document): bool => 'Default' === ($document->group ?? null),
+            ))
+            ->willReturnArgument(0)
+        ;
 
-        $manager->method('create')->willReturn($createdWidget);
-
-        $resolver = $this->buildResolver($manager, $denormalizer);
+        $resolver = $this->buildResolver($manager);
 
         $resolver->resolve('create', 'Widget', ['group' => ProjectValidationGroup::Default]);
-
-        $this->assertSame('Default', $dto->group);
     }
 
     #[AllowMockObjectsWithoutExpectations]
     public function testFlattensEnumsInNestedArrays(): void
     {
-        $dto = new \stdClass();
-        $createdWidget = new \stdClass();
-
-        $denormalizer = $this->createStub(DenormalizerInterface::class);
-        $denormalizer->method('denormalize')->willReturnCallback(
-            function (array $data) use ($dto) {
-                $dto->nested = $data['nested'];
-
-                return $dto;
-            },
-        );
-
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
         ;
+        $manager->expects(self::once())
+            ->method('create')
+            ->with(self::callback(
+                fn (object $document): bool => ['color' => 'green'] === ($document->nested ?? null),
+            ))
+            ->willReturnArgument(0)
+        ;
 
-        $manager->method('create')->willReturn($createdWidget);
-
-        $resolver = $this->buildResolver($manager, $denormalizer);
+        $resolver = $this->buildResolver($manager);
 
         $resolver->resolve('create', 'Widget', ['nested' => ['color' => Color::Green]]);
-
-        $this->assertSame(['color' => 'green'], $dto->nested);
     }
 
     public function testThrowsOnUnknownMethod(): void
@@ -409,10 +354,13 @@ class MutationFieldResolverTest extends TestCase
     private function buildResolver(
         WidgetManagerStub $manager,
         ?DenormalizerInterface $denormalizer = null,
+        ?ValidatorInterface $validator = null,
     ): MutationFieldResolver {
         return new MutationFieldResolver(
             new NodeIdResolver($this->registry, new Base64NodeIdCodec()),
-            $denormalizer ?? $this->createStub(DenormalizerInterface::class),
+            $denormalizer ?? new ObjectNormalizer(),
+            $validator ?? Validation::createValidator(),
+            $this->managerProvider($manager),
             $this->managerProvider($manager),
             $this->managerProvider($manager),
             $this->managerProvider($manager),
@@ -426,5 +374,23 @@ class MutationFieldResolverTest extends TestCase
         $provider->method('get')->willReturn($manager);
 
         return $provider;
+    }
+
+    private function buildResolverWithRelationManager(
+        WidgetManagerStub $manager,
+        GlobalObjectManagerInterface $relationManager,
+    ): MutationFieldResolver {
+        $relations = $this->createStub(ServiceProviderInterface::class);
+        $relations->method('get')->willReturn($relationManager);
+
+        return new MutationFieldResolver(
+            new NodeIdResolver($this->registry, new Base64NodeIdCodec()),
+            new ObjectNormalizer(),
+            Validation::createValidator(),
+            $this->managerProvider($manager),
+            $this->managerProvider($manager),
+            $this->managerProvider($manager),
+            $relations,
+        );
     }
 }

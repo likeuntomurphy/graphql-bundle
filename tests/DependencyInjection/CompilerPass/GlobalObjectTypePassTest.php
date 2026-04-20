@@ -70,7 +70,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
     public function testConfigFieldCount(): void
     {
-        $this->assertCount(9, $this->getConfig()['fields']);
+        $this->assertCount(10, $this->getConfig()['fields']);
     }
 
     public function testIdFieldIsNodeIdReference(): void

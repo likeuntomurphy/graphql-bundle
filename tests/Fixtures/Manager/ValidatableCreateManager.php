@@ -6,7 +6,6 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Dto\ProjectDto;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Enum\ProjectValidationGroup;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 use Likeuntomurphy\GraphQL\ValidatableManagerInterface;
@@ -18,17 +17,12 @@ class ValidatableCreateManager implements GlobalObjectManagerInterface, Creatabl
         return Project::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return ProjectDto::class;
-    }
-
     public static function getValidationGroupEnum(): string
     {
         return ProjectValidationGroup::class;
     }
 
-    public function create(object $dto, object $document, array $validationGroups = []): object
+    public function create(object $document): object
     {
         return new \stdClass();
     }

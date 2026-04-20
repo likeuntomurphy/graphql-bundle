@@ -19,11 +19,6 @@ class ListableManager implements GlobalObjectManagerInterface, ListableManagerIn
         return Project::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return \stdClass::class;
-    }
-
     /** @return PaginatedResults<GlobalObjectInterface> */
     public function list(CursorPaginationParams $params, ?callable $filter = null): PaginatedResults
     {

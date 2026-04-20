@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument;
 
 use Likeuntomurphy\GraphQL\Attribute as GraphQL;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ProjectManager;
 
+#[GlobalObject(manager: ProjectManager::class)]
 class Project
 {
+    public string $name;
     protected string $id;
 
     #[GraphQL\Description('This is an int field')]

@@ -7,6 +7,7 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\StubDocument;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 
 /**
@@ -16,12 +17,7 @@ class WidgetManagerStub implements GlobalObjectManagerInterface, CreatableManage
 {
     public static function getManagedGlobalObject(): string
     {
-        return \stdClass::class;
-    }
-
-    public static function getManagedDataTransferObject(): string
-    {
-        return \stdClass::class;
+        return StubDocument::class;
     }
 
     public function read(string $id): ?object
@@ -29,12 +25,12 @@ class WidgetManagerStub implements GlobalObjectManagerInterface, CreatableManage
         return new \stdClass();
     }
 
-    public function create(object $dto, object $object, array $validationGroups = []): object
+    public function create(object $document): object
     {
         return new \stdClass();
     }
 
-    public function update(object $dto, object $document, array $validationGroups = []): object
+    public function update(object $document): object
     {
         return new \stdClass();
     }

@@ -8,7 +8,8 @@ use GraphQL\Type\Definition\FieldDefinition;
 use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\PhpEnumType;
 use GraphQL\Type\Definition\UnionType;
-use Likeuntomurphy\GraphQL\Attribute\IdField;
+use Likeuntomurphy\GraphQL\Attribute\Exclude;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\Exception\InvalidMutationFieldException;
@@ -52,7 +53,8 @@ class MutationFieldPass implements CompilerPassInterface
                 $managerClass = $container->getDefinition($serviceId)->getClass() ?? $serviceId;
 
                 $objectClass = $managerClass::getManagedGlobalObject();
-                $typeName = new \ReflectionClass($objectClass)->getShortName();
+                $documentRc = new \ReflectionClass($objectClass);
+                $typeName = $documentRc->getShortName();
 
                 $unionName = $typeName.'MutationResult';
                 $unionId = TypeRegistry::TAG.'.'.$unionName;
@@ -69,12 +71,13 @@ class MutationFieldPass implements CompilerPassInterface
                     $fieldName = s($method.$typeName)->camel()->toString();
                     $idArg = ['id' => ['type' => $this->nonNull(new Reference(TypeRegistry::ID), $container)]];
 
-                    $dtoClass = $managerClass::getManagedDataTransferObject();
+                    $relations = [];
+                    $payloadFields = 'delete' === $method ? [] : $this->resolveFields($documentRc, $container, $relations);
 
                     $args = match ($method) {
-                        'create' => $this->resolveFields(new \ReflectionClass($dtoClass), $container),
+                        'create' => $payloadFields,
                         'delete' => $idArg,
-                        default => $idArg + $this->resolveFields(new \ReflectionClass($dtoClass), $container),
+                        default => $idArg + $payloadFields,
                     };
 
                     if ('delete' !== $method && is_subclass_of($managerClass, ValidatableManagerInterface::class)) {
@@ -86,14 +89,12 @@ class MutationFieldPass implements CompilerPassInterface
                         $args['validationGroups'] = ['type' => $this->listOf($this->nonNull($ref, $container), $container)];
                     }
 
-                    $idFields = 'delete' !== $method ? $this->collectIdFields($dtoClass) : [];
-
                     $handlerId = 'graphql.mutation.handler.'.$fieldName;
                     $definitions[$handlerId] = new Definition(MutationFieldHandler::class, [
                         $method,
                         $typeName,
                         new Reference(MutationFieldResolver::class),
-                        $idFields,
+                        $relations,
                     ]);
 
                     $config = [
@@ -126,27 +127,17 @@ class MutationFieldPass implements CompilerPassInterface
     }
 
     /**
-     * @param \ReflectionClass<object> $rc
+     * @param \ReflectionClass<object>                               $rc
+     * @param array<string, array{property: string, target: string}> &$relations keyed by GraphQL arg name
      *
      * @return array<string, array{type: Reference}>
      */
-    private function resolveFields(\ReflectionClass $rc, ContainerBuilder $container): array
+    private function resolveFields(\ReflectionClass $rc, ContainerBuilder $container, array &$relations): array
     {
         $fields = [];
 
         foreach ($rc->getProperties() as $rp) {
-            if ($rp->isReadOnly()) {
-                continue;
-            }
-
-            if ([] !== $rp->getAttributes(IdField::class)) {
-                $ref = new Reference(TypeRegistry::ID);
-                $type = $this->typeResolver()->resolve($rp);
-                $nullable = $type instanceof NullableType;
-                $fields[$rp->getName()] = [
-                    'type' => $nullable ? $ref : $this->nonNull($ref, $container),
-                ];
-
+            if ($rp->isReadOnly() || 'id' === $rp->getName() || [] !== $rp->getAttributes(Exclude::class)) {
                 continue;
             }
 
@@ -167,6 +158,17 @@ class MutationFieldPass implements CompilerPassInterface
                     $fields[$rp->getName()] = [
                         'type' => $nullable ? $ref : $this->nonNull($ref, $container),
                     ];
+
+                    continue;
+                }
+
+                if ([] !== $objectRc->getAttributes(GlobalObject::class)) {
+                    $argName = $rp->getName().'Id';
+                    $ref = new Reference(TypeRegistry::ID);
+                    $fields[$argName] = [
+                        'type' => $nullable ? $ref : $this->nonNull($ref, $container),
+                    ];
+                    $relations[$argName] = ['property' => $rp->getName(), 'target' => $objectRc->getShortName()];
 
                     continue;
                 }
@@ -198,33 +200,16 @@ class MutationFieldPass implements CompilerPassInterface
         $id = TypeRegistry::TAG.'.'.$name;
 
         if (!$container->has($id)) {
+            $relations = [];
             $container->addDefinitions([
                 $id => new Definition(InputObjectType::class, [[
                     'name' => $name,
-                    'fields' => $this->resolveFields($rc, $container),
+                    'fields' => $this->resolveFields($rc, $container, $relations),
                 ]])->setPublic(true)->addTag(TypeRegistry::TAG, ['name' => $name]),
             ]);
         }
 
         return new Reference($id);
-    }
-
-    /**
-     * @param class-string $dtoClass
-     *
-     * @return list<string>
-     */
-    private function collectIdFields(string $dtoClass): array
-    {
-        $fields = [];
-
-        foreach (new \ReflectionClass($dtoClass)->getProperties() as $rp) {
-            if ([] !== $rp->getAttributes(IdField::class)) {
-                $fields[] = $rp->getName();
-            }
-        }
-
-        return $fields;
     }
 
     /**

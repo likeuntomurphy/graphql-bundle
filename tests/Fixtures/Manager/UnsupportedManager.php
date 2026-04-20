@@ -6,22 +6,16 @@ namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Dto\UnsupportedDto;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\UnsupportedDocument;
 
 class UnsupportedManager implements GlobalObjectManagerInterface, CreatableManagerInterface
 {
     public static function getManagedGlobalObject(): string
     {
-        return Project::class;
+        return UnsupportedDocument::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return UnsupportedDto::class;
-    }
-
-    public function create(object $dto, object $document, array $validationGroups = []): object
+    public function create(object $document): object
     {
         return new \stdClass();
     }

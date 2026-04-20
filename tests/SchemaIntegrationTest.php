@@ -15,6 +15,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * @internal
@@ -47,6 +49,13 @@ class SchemaIntegrationTest extends TestCase
         $container->setDefinition(
             DenormalizerInterface::class,
             new Definition(ObjectNormalizer::class),
+        );
+
+        // Register a validator that runs no constraints (there are none declared on Widget).
+        $container->setDefinition(
+            ValidatorInterface::class,
+            (new Definition(ValidatorInterface::class))
+                ->setFactory([Validation::class, 'createValidator']),
         );
 
         // Make schema accessible for testing.

@@ -19,11 +19,6 @@ class InvalidConnectionManager implements GlobalObjectManagerInterface
         return ProjectWithAttachments::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return \stdClass::class;
-    }
-
     /** @return PaginatedResults<NonExistent> @phpstan-ignore generics.notSubtype */
     #[AsConnection('items')]
     public function findItems(ProjectWithAttachments $source, CursorPaginationParams $params): PaginatedResults // @phpstan-ignore class.notFound

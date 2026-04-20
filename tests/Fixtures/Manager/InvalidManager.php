@@ -13,11 +13,6 @@ class InvalidManager implements GlobalObjectManagerInterface
         return 'App\Document\NonExistent'; // @phpstan-ignore return.type
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return 'App\Dto\NonExistent'; // @phpstan-ignore return.type
-    }
-
     public function read(string $id): ?object
     {
         return null;

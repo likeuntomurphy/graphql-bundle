@@ -18,11 +18,6 @@ class NonGenericConnectionManager implements GlobalObjectManagerInterface
         return ProjectWithAttachments::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return \stdClass::class;
-    }
-
     #[AsConnection('items')] // @phpstan-ignore missingType.generics
     public function findItems(ProjectWithAttachments $source, CursorPaginationParams $params): PaginatedResults
     {

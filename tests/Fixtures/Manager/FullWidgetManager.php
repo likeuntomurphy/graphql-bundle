@@ -11,7 +11,6 @@ use Likeuntomurphy\GraphQL\ListableManagerInterface;
 use Likeuntomurphy\GraphQL\Model\PageInfo;
 use Likeuntomurphy\GraphQL\Pagination\CursorPaginationParams;
 use Likeuntomurphy\GraphQL\Pagination\PaginatedResults;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Dto\WidgetDto;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Widget;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 
@@ -27,11 +26,6 @@ class FullWidgetManager implements GlobalObjectManagerInterface, ListableManager
         return Widget::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return WidgetDto::class;
-    }
-
     public function seed(Widget ...$widgets): void
     {
         foreach ($widgets as $widget) {
@@ -44,25 +38,21 @@ class FullWidgetManager implements GlobalObjectManagerInterface, ListableManager
         return $this->store[$id] ?? null;
     }
 
-    public function create(object $dto, object $document, array $validationGroups = []): object
+    public function create(object $document): object
     {
-        \assert($dto instanceof WidgetDto);
         \assert($document instanceof Widget);
 
         $document->id = (string) $this->nextId++;
-        $document->name = $dto->name;
-
         $this->store[$document->id] = $document;
 
         return $document;
     }
 
-    public function update(object $dto, object $document, array $validationGroups = []): object
+    public function update(object $document): object
     {
-        \assert($dto instanceof WidgetDto);
         \assert($document instanceof Widget);
 
-        $document->name = $dto->name;
+        $this->store[$document->id] = $document;
 
         return $document;
     }

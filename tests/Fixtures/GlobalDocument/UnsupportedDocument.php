@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Dto;
+namespace Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument;
 
-class UnsupportedDto
+class UnsupportedDocument
 {
     /** @var array<mixed> */
     public array $items;

@@ -14,11 +14,6 @@ class WithResolverManager implements GlobalObjectManagerInterface
         return WithResolver::class;
     }
 
-    public static function getManagedDataTransferObject(): string
-    {
-        return \stdClass::class;
-    }
-
     public function read(string $id): ?object
     {
         return null;
