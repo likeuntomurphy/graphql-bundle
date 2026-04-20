@@ -30,7 +30,7 @@ The entire GraphQL schema is built at **container compile time** through a serie
 
 At runtime, the `TypeRegistry` resolves types lazily via a `ServiceLocator`. Types are instantiated only when first accessed during query execution, not upfront. This means the compiled container holds the full schema definition, but individual type objects are created on demand — keeping memory usage proportional to the query being executed rather than the total schema size.
 
-The bundle is **persistence-agnostic**. The only contract for a global object is implementing `GlobalObjectInterface`, which requires a single `getId()` method. How and where entities are stored is entirely up to the manager. The `CursorPaginatedRepository` base class for Doctrine MongoDB ODM is a convenience utility, not a requirement — a comparable utility for the ORM is planned.
+The bundle is **persistence-agnostic** — and more broadly, data source–agnostic. The only contract for a global object is implementing `GlobalObjectInterface`, which requires a single `getId()` method. A manager is free to read from a database, a document store, a REST API, a federated GraphQL service, an in-memory fixture, or anything else; the bundle doesn't know or care whether the manager persists anything at all.
 
 ## Defining a global object
 
