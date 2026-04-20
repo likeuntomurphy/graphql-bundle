@@ -162,6 +162,94 @@ class SchemaIntegrationTest extends TestCase
         $this->assertContains('NodeNotFound', $typeNames);
     }
 
+    public function testCreateMutationPersistsAndReturnsWidget(): void
+    {
+        $result = $this->execute('
+            mutation ($name: String!) {
+                createWidget(name: $name) {
+                    ... on Widget { id name }
+                }
+            }
+        ', ['name' => 'Gamma']);
+
+        $this->assertNull($result['errors'] ?? null);
+        $this->assertSame('Gamma', $result['data']['createWidget']['name']);
+
+        $encodedId = $result['data']['createWidget']['id'];
+        $this->assertSame('Widget:1', base64_decode($encodedId, true));
+        $this->assertSame('Gamma', $this->manager->read('1')?->name);
+    }
+
+    public function testUpdateMutationAppliesDtoToStoredWidget(): void
+    {
+        $this->manager->seed(new Widget('7', 'Before'));
+
+        $result = $this->execute('
+            mutation ($id: ID!, $name: String!) {
+                updateWidget(id: $id, name: $name) {
+                    ... on Widget { id name }
+                    ... on NodeNotFound { id }
+                }
+            }
+        ', ['id' => base64_encode('Widget:7'), 'name' => 'After']);
+
+        $this->assertNull($result['errors'] ?? null);
+        $this->assertSame('After', $result['data']['updateWidget']['name']);
+        $this->assertSame('After', $this->manager->read('7')?->name);
+    }
+
+    public function testUpdateMutationReturnsNodeNotFoundForMissingId(): void
+    {
+        $encodedId = base64_encode('Widget:999');
+
+        $result = $this->execute('
+            mutation ($id: ID!, $name: String!) {
+                updateWidget(id: $id, name: $name) {
+                    ... on Widget { name }
+                    ... on NodeNotFound { id }
+                }
+            }
+        ', ['id' => $encodedId, 'name' => 'ignored']);
+
+        $this->assertNull($result['errors'] ?? null);
+        $this->assertSame($encodedId, $result['data']['updateWidget']['id']);
+    }
+
+    public function testDeleteMutationRemovesStoredWidget(): void
+    {
+        $this->manager->seed(new Widget('9', 'Doomed'));
+
+        $result = $this->execute('
+            mutation ($id: ID!) {
+                deleteWidget(id: $id) {
+                    ... on Widget { name }
+                    ... on NodeNotFound { id }
+                }
+            }
+        ', ['id' => base64_encode('Widget:9')]);
+
+        $this->assertNull($result['errors'] ?? null);
+        $this->assertSame('Doomed', $result['data']['deleteWidget']['name']);
+        $this->assertNull($this->manager->read('9'));
+    }
+
+    public function testDeleteMutationReturnsNodeNotFoundForMissingId(): void
+    {
+        $encodedId = base64_encode('Widget:999');
+
+        $result = $this->execute('
+            mutation ($id: ID!) {
+                deleteWidget(id: $id) {
+                    ... on Widget { name }
+                    ... on NodeNotFound { id }
+                }
+            }
+        ', ['id' => $encodedId]);
+
+        $this->assertNull($result['errors'] ?? null);
+        $this->assertSame($encodedId, $result['data']['deleteWidget']['id']);
+    }
+
     /**
      * @param array<string, mixed> $variables
      *

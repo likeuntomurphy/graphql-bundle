@@ -9,8 +9,8 @@ use Likeuntomurphy\GraphQL\GlobalObjectInterface;
 class Widget implements GlobalObjectInterface
 {
     public function __construct(
-        protected string $id,
-        public string $name,
+        public string $id = '',
+        public string $name = '',
     ) {
     }
 

@@ -17,7 +17,7 @@ class StandardTypePass implements CompilerPassInterface
         $definitions = [];
 
         foreach (Type::getStandardTypes() as $name => $instance) {
-            $definition = new Definition(get_class($instance));
+            $definition = new Definition($instance::class);
             $definition->setFactory([Type::class, strtolower($name)]);
             $definition->setPublic(true);
             $definition->addTag(TypeRegistry::TAG, ['name' => $name]);

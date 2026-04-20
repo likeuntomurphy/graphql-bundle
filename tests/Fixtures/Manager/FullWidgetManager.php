@@ -5,17 +5,22 @@ declare(strict_types=1);
 namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
+use Likeuntomurphy\GraphQL\DeletableManagerInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\ListableManagerInterface;
 use Likeuntomurphy\GraphQL\Model\PageInfo;
 use Likeuntomurphy\GraphQL\Pagination\CursorPaginationParams;
 use Likeuntomurphy\GraphQL\Pagination\PaginatedResults;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\Dto\WidgetDto;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Widget;
+use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
 
-class FullWidgetManager implements GlobalObjectManagerInterface, ListableManagerInterface, CreatableManagerInterface
+class FullWidgetManager implements GlobalObjectManagerInterface, ListableManagerInterface, CreatableManagerInterface, UpdatableManagerInterface, DeletableManagerInterface
 {
-    /** @var array<string, Widget> */
+    /** @var array<array-key, Widget> */
     private array $store = [];
+
+    private int $nextId = 1;
 
     public static function getManagedGlobalObject(): string
     {
@@ -24,7 +29,7 @@ class FullWidgetManager implements GlobalObjectManagerInterface, ListableManager
 
     public static function getManagedDataTransferObject(): string
     {
-        return \stdClass::class;
+        return WidgetDto::class;
     }
 
     public function seed(Widget ...$widgets): void
@@ -34,13 +39,40 @@ class FullWidgetManager implements GlobalObjectManagerInterface, ListableManager
         }
     }
 
-    public function read(string $id): ?object
+    public function read(string $id): ?Widget
     {
         return $this->store[$id] ?? null;
     }
 
     public function create(object $dto, object $document, array $validationGroups = []): object
     {
+        \assert($dto instanceof WidgetDto);
+        \assert($document instanceof Widget);
+
+        $document->id = (string) $this->nextId++;
+        $document->name = $dto->name;
+
+        $this->store[$document->id] = $document;
+
+        return $document;
+    }
+
+    public function update(object $dto, object $document, array $validationGroups = []): object
+    {
+        \assert($dto instanceof WidgetDto);
+        \assert($document instanceof Widget);
+
+        $document->name = $dto->name;
+
+        return $document;
+    }
+
+    public function delete(object $document): object
+    {
+        \assert($document instanceof Widget);
+
+        unset($this->store[$document->id]);
+
         return $document;
     }
 
