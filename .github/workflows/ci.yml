@@ -15,25 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build
-        uses: docker/build-push-action@v6
+      - uses: shivammathur/setup-php@v2
         with:
-          context: .
-          load: true
-          tags: graphql-bundle:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          php-version: '8.5'
+          extensions: mongodb
+          coverage: none
+          tools: composer:v2
 
       - name: Install dependencies
-        run: docker compose run --rm php composer update --no-interaction --prefer-dist
+        run: composer update --no-interaction --prefer-dist
 
       - name: PHPStan
-        run: docker compose run --rm php vendor/bin/phpstan analyse src --level=max --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=256M
 
       - name: PHP CS Fixer
-        run: docker compose run --rm php vendor/bin/php-cs-fixer fix src --dry-run --diff
+        run: vendor/bin/php-cs-fixer fix src --dry-run --diff
 
       - name: PHPUnit
-        run: docker compose run --rm php vendor/bin/phpunit tests/
+        run: vendor/bin/phpunit tests/

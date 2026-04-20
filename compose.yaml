@@ -1,8 +1,0 @@
-services:
-  php:
-    build: .
-    image: graphql-bundle:ci
-    working_dir: /app
-    volumes:
-      - .:/app
-    command: ["sleep", "infinity"]

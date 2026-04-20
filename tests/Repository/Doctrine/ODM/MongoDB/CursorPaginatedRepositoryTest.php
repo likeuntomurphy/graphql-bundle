@@ -13,6 +13,7 @@ use Likeuntomurphy\GraphQL\Model\PageInfo;
 use Likeuntomurphy\GraphQL\Pagination\CursorPaginationParams;
 use Likeuntomurphy\GraphQL\Repository\Doctrine\ODM\MongoDB\CursorPaginatedRepository;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,6 +21,7 @@ use PHPUnit\Framework\TestCase;
  *
  * @covers \Likeuntomurphy\GraphQL\Repository\Doctrine\ODM\MongoDB\CursorPaginatedRepository
  */
+#[RequiresPhpExtension('mongodb')]
 class CursorPaginatedRepositoryTest extends TestCase
 {
     /** A valid 24-char hex ObjectId string used as the pagination cursor in every test. */
