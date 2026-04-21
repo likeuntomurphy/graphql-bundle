@@ -258,7 +258,7 @@ class MutationFieldResolverTest extends TestCase
     }
 
     #[AllowMockObjectsWithoutExpectations]
-    public function testFlattensBackedEnumToValue(): void
+    public function testAssignsBackedEnumToEnumTypedProperty(): void
     {
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
@@ -267,7 +267,7 @@ class MutationFieldResolverTest extends TestCase
         $manager->expects(self::once())
             ->method('create')
             ->with(self::callback(
-                fn (object $document): bool => 'red' === ($document->color ?? null),
+                fn (object $document): bool => Color::Red === ($document->color ?? null),
             ))
             ->willReturnArgument(0)
         ;
@@ -278,7 +278,7 @@ class MutationFieldResolverTest extends TestCase
     }
 
     #[AllowMockObjectsWithoutExpectations]
-    public function testFlattensUnitEnumToName(): void
+    public function testAssignsUnitEnumToEnumTypedProperty(): void
     {
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
@@ -287,7 +287,7 @@ class MutationFieldResolverTest extends TestCase
         $manager->expects(self::once())
             ->method('create')
             ->with(self::callback(
-                fn (object $document): bool => 'Basic' === ($document->group ?? null),
+                fn (object $document): bool => Tier::Basic === ($document->group ?? null),
             ))
             ->willReturnArgument(0)
         ;
@@ -298,7 +298,7 @@ class MutationFieldResolverTest extends TestCase
     }
 
     #[AllowMockObjectsWithoutExpectations]
-    public function testFlattensEnumsInNestedArrays(): void
+    public function testPreservesEnumsInNestedArrays(): void
     {
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
@@ -307,7 +307,7 @@ class MutationFieldResolverTest extends TestCase
         $manager->expects(self::once())
             ->method('create')
             ->with(self::callback(
-                fn (object $document): bool => ['color' => 'green'] === ($document->nested ?? null),
+                fn (object $document): bool => ['color' => Color::Green] === ($document->nested ?? null),
             ))
             ->willReturnArgument(0)
         ;

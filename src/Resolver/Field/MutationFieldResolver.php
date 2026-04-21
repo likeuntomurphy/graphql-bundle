@@ -45,8 +45,6 @@ class MutationFieldResolver
      */
     public function resolve(string $method, string $typeName, string $entityClass, array $args, array $relations = []): object
     {
-        $args = $this->flattenEnums($args);
-
         return match ($method) {
             'create' => $this->handleCreate($this->creatableManagers->get($typeName), $entityClass, $args, $relations),
             'update' => $this->handleUpdate($this->updatableManagers->get($typeName), $entityClass, $args, $relations),
@@ -177,26 +175,5 @@ class MutationFieldResolver
         }
 
         return [$args, $violations];
-    }
-
-    /**
-     * @param array<string, mixed> $args
-     *
-     * @return array<string, mixed>
-     */
-    private function flattenEnums(array $args): array
-    {
-        foreach ($args as $key => $value) {
-            if ($value instanceof \BackedEnum) {
-                $args[$key] = $value->value;
-            } elseif ($value instanceof \UnitEnum) {
-                $args[$key] = $value->name;
-            } elseif (\is_array($value)) {
-                /** @var array<string, mixed> $value */
-                $args[$key] = $this->flattenEnums($value);
-            }
-        }
-
-        return $args;
     }
 }
