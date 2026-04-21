@@ -24,6 +24,8 @@ return [
 ];
 ```
 
+The bundle's extension prepends `framework.serializer: { enabled: true }` because `MutationFieldResolver` autowires `Symfony\Component\Serializer\Normalizer\DenormalizerInterface` and relies on `AbstractNormalizer::OBJECT_TO_POPULATE`, which `ObjectNormalizer` (and equivalent denormalizers) provide. App-level config overrides still win; the prepend only supplies a default when nothing is configured.
+
 ## How it works
 
 The schema is a container artifact. Every object type, input type, connection, enum, query field, and mutation field is registered as a tagged service definition by a compiler pass — there is no schema assembly, reflection scan, or attribute parsing at request time.
