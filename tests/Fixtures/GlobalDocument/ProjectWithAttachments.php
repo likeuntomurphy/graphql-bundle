@@ -9,11 +9,11 @@ use Likeuntomurphy\GraphQL\GlobalObjectInterface;
 
 class ProjectWithAttachments implements GlobalObjectInterface
 {
-    protected string $id;
-    protected string $name;
+    public string $id;
+    public string $name;
 
     /** @var Collection<int, Attachment> */
-    protected Collection $attachments;
+    public Collection $attachments;
 
     public function getId(): string
     {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Likeuntomurphy\GraphQL\Tests\Resolver\Field;
 
 use GraphQL\Type\Definition\ResolveInfo;
-use Likeuntomurphy\GraphQL\Attribute\AsConnection;
 use Likeuntomurphy\GraphQL\GlobalObjectInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Model\Connection;
@@ -100,7 +99,6 @@ class NestedConnectionManagerStub implements GlobalObjectManagerInterface
     }
 
     /** @return PaginatedResults<GlobalObjectInterface> */
-    #[AsConnection('children')]
     public function findByParent(object $source, CursorPaginationParams $params): PaginatedResults
     {
         return new PaginatedResults([], new PageInfo(false, null, null));

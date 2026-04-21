@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass;
 
 use GraphQL\Type\Definition\ObjectType;
-use Likeuntomurphy\GraphQL\Attribute\AsConnection;
 use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\CreatableManagerInterface;
 use Likeuntomurphy\GraphQL\DeletableManagerInterface;
@@ -43,9 +42,10 @@ class GlobalObjectTypePass implements CompilerPassInterface
     {
         $definitions = [];
         $classMap = [];
-        $connectionFieldMap = $this->buildConnectionFieldMap($container);
+        $entities = $this->discoverEntities($container);
+        $globalClasses = array_keys($entities);
 
-        foreach ($this->discoverEntities($container) as $entityClass => [$entityRc, $managerClass]) {
+        foreach ($entities as $entityClass => [$entityRc, $managerClass]) {
             try {
                 $typeName = $entityRc->getShortName();
 
@@ -64,7 +64,8 @@ class GlobalObjectTypePass implements CompilerPassInterface
                     }
                 }
 
-                $skipFields = $connectionFieldMap[$typeName] ?? [];
+                // Connection properties are handled by ConnectionFieldPass; skip them in the normal field resolution.
+                $skipFields = array_keys($this->connectionProperties($entityRc, $globalClasses));
 
                 $config = [
                     'name' => $typeName,
@@ -92,12 +93,14 @@ class GlobalObjectTypePass implements CompilerPassInterface
     }
 
     /**
-     * Iterate resource-tagged entities, yielding [ReflectionClass, managerClass] per entity class.
+     * Collect resource-tagged entities keyed by class with [ReflectionClass, managerClass] values.
      *
-     * @return iterable<string, array{\ReflectionClass<object>, class-string}>
+     * @return array<class-string, array{\ReflectionClass<object>, class-string}>
      */
-    private function discoverEntities(ContainerBuilder $container): iterable
+    private function discoverEntities(ContainerBuilder $container): array
     {
+        $entities = [];
+
         foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $id => $tags) {
             $entityClass = $container->getDefinition($id)->getClass() ?? $id;
 
@@ -111,36 +114,11 @@ class GlobalObjectTypePass implements CompilerPassInterface
             /** @var class-string $managerClass */
             $managerClass = $tags[0]['manager'];
 
-            yield $entityClass => [new \ReflectionClass($entityClass), $managerClass];
-        }
-    }
-
-    /**
-     * Scans all managers for #[AsConnection] methods to build a map
-     * of parent type name => list of field names handled by ConnectionFieldPass.
-     *
-     * @return array<string, list<string>>
-     */
-    private function buildConnectionFieldMap(ContainerBuilder $container): array
-    {
-        $map = [];
-
-        foreach ($this->discoverEntities($container) as [$entityRc, $managerClass]) {
-            $parentTypeName = $entityRc->getShortName();
-
-            foreach (new \ReflectionClass($managerClass)->getMethods() as $rm) {
-                $attrs = $rm->getAttributes(AsConnection::class);
-
-                if ([] === $attrs) {
-                    continue;
-                }
-
-                $attr = $attrs[0]->newInstance();
-                $map[$parentTypeName][] = $attr->fieldName;
-            }
+            /** @var class-string $entityClass */
+            $entities[$entityClass] = [new \ReflectionClass($entityClass), $managerClass];
         }
 
-        return $map;
+        return $entities;
     }
 
     /** @param \ReflectionClass<object> $rc */

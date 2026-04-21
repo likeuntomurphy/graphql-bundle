@@ -6,7 +6,6 @@ namespace Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass;
 
 use Likeuntomurphy\GraphQL\Argument\After;
 use Likeuntomurphy\GraphQL\Argument\First;
-use Likeuntomurphy\GraphQL\Attribute\AsConnection;
 use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
 use Likeuntomurphy\GraphQL\Exception\InvalidConnectionFieldException;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionResolver;
@@ -16,8 +15,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Component\TypeInfo\Type\GenericType;
-use Symfony\Component\TypeInfo\Type\ObjectType;
 
 class ConnectionFieldPass implements CompilerPassInterface
 {
@@ -25,60 +22,70 @@ class ConnectionFieldPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $entityServiceId => $tags) {
+        $entities = $this->discoverEntities($container);
+        $globalClasses = array_keys($entities);
+
+        foreach ($entities as $entityClass => [$entityRc, $managerClass]) {
             try {
-                /** @var class-string $entityClass */
-                $entityClass = $container->getDefinition($entityServiceId)->getClass() ?? $entityServiceId;
-                $entityRc = new \ReflectionClass($entityClass);
-
-                /** @var class-string $managerClass */
-                $managerClass = $tags[0]['manager'];
                 $parentTypeName = $entityRc->getShortName();
+                $managerRc = new \ReflectionClass($managerClass);
 
-                foreach (new \ReflectionClass($managerClass)->getMethods() as $rm) {
-                    $connectionAttrs = $rm->getAttributes(AsConnection::class);
+                foreach ($this->connectionProperties($entityRc, $globalClasses) as $propertyName => $childClass) {
+                    $childRc = new \ReflectionClass($childClass);
+                    $childTypeName = $childRc->getShortName();
+                    $methodName = 'paginate'.ucfirst($propertyName);
 
-                    if ([] === $connectionAttrs) {
-                        continue;
+                    if (!$managerRc->hasMethod($methodName)) {
+                        throw new \RuntimeException(\sprintf(
+                            '%s::$%s is a collection of %s but %s has no method %s(). Expected signature: public function %s(%s $parent, CursorPaginationParams $params): PaginatedResults<%s>.',
+                            $entityClass,
+                            $propertyName,
+                            $childTypeName,
+                            $managerClass,
+                            $methodName,
+                            $methodName,
+                            $parentTypeName,
+                            $childTypeName,
+                        ));
                     }
 
-                    $connectionAttr = $connectionAttrs[0]->newInstance();
-                    $childTypeName = $this->resolveChildTypeName($rm);
-
-                    $this->addConnectionField($parentTypeName, $childTypeName, $connectionAttr->fieldName, $rm->getName(), $managerClass, $container);
+                    $this->addConnectionField(
+                        $parentTypeName,
+                        $childTypeName,
+                        $propertyName,
+                        $methodName,
+                        $managerClass,
+                        $container,
+                    );
                 }
             } catch (\Exception $e) {
-                throw new InvalidConnectionFieldException($entityServiceId, $e);
+                throw new InvalidConnectionFieldException($entityClass, $e);
             }
         }
     }
 
-    private function resolveChildTypeName(\ReflectionMethod $rm): string
+    /**
+     * @return array<class-string, array{\ReflectionClass<object>, class-string}>
+     */
+    private function discoverEntities(ContainerBuilder $container): array
     {
-        $returnType = $this->typeResolver()->resolve($rm);
+        $entities = [];
 
-        if (!$returnType instanceof GenericType) {
-            throw new \RuntimeException(\sprintf(
-                '%s::%s() must have a generic return type (e.g. PaginatedResults<ChildType>).',
-                $rm->getDeclaringClass()->getName(),
-                $rm->getName(),
-            ));
+        foreach ($container->findTaggedResourceIds(GlobalObject::RESOURCE_TAG) as $id => $tags) {
+            /** @var class-string $entityClass */
+            $entityClass = $container->getDefinition($id)->getClass() ?? $id;
+
+            if (!class_exists($entityClass)) {
+                continue;
+            }
+
+            /** @var class-string $managerClass */
+            $managerClass = $tags[0]['manager'];
+
+            $entities[$entityClass] = [new \ReflectionClass($entityClass), $managerClass];
         }
 
-        $variableTypes = $returnType->getVariableTypes();
-
-        if ([] === $variableTypes || !$variableTypes[0] instanceof ObjectType) {
-            throw new \RuntimeException(\sprintf(
-                '%s::%s() generic return type must wrap an object type.',
-                $rm->getDeclaringClass()->getName(),
-                $rm->getName(),
-            ));
-        }
-
-        /** @var class-string $className */
-        $className = $variableTypes[0]->getClassName();
-
-        return new \ReflectionClass($className)->getShortName();
+        return $entities;
     }
 
     private function addConnectionField(

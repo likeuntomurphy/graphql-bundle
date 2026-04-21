@@ -12,13 +12,12 @@ use Likeuntomurphy\GraphQL\DependencyInjection\CompilerPass\QueryFieldPass;
 use Likeuntomurphy\GraphQL\Exception\InvalidConnectionFieldException;
 use Likeuntomurphy\GraphQL\Resolver\Field\ConnectionResolver;
 use Likeuntomurphy\GraphQL\Resolver\Field\NestedConnectionFieldHandler;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Attachment;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ConnectionFieldManager;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\InvalidConnectionManager;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\IdFieldManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ListableManager;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\NonGenericConnectionManager;
-use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ScalarGenericConnectionManager;
 use Likeuntomurphy\GraphQL\TypeRegistry;
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractCompilerPassTestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -75,7 +74,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertSame(Type::id(), ($field['args']['after']['type'])());
     }
 
-    public function testConnectionFieldResolvesToHandler(): void
+    public function testConnectionFieldResolvesToHandlerUsingConventionMethod(): void
     {
         $this->registerManagers();
 
@@ -94,12 +93,12 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertSame([\Closure::class, 'fromCallable'], $closureDefinition->getFactory());
         $callable = $closureDefinition->getArgument(0);
         $this->assertSame(ConnectionFieldManager::class, (string) $callable[0]);
-        $this->assertSame('findAttachments', $callable[1]);
+        $this->assertSame('paginateAttachments', $callable[1]);
 
         $this->assertSame(ConnectionResolver::class, (string) $handler->getArgument(1));
     }
 
-    public function testDoesNothingWithNoConnectionFieldManagers(): void
+    public function testDoesNothingWhenEntityHasNoCollectionOfGlobalObject(): void
     {
         $this->registerEntity(Project::class, ListableManager::class);
 
@@ -108,9 +107,11 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertFalse($this->container->hasDefinition('graphql.connection.handler.Project.attachments'));
     }
 
-    public function testThrowsInvalidConnectionFieldExceptionForNonExistentClass(): void
+    public function testThrowsWhenManagerIsMissingConventionMethod(): void
     {
-        $this->registerEntity(ProjectWithAttachments::class, InvalidConnectionManager::class);
+        // ConnectionFieldManager renamed; use a manager that lacks paginateAttachments.
+        $this->registerEntity(ProjectWithAttachments::class, IdFieldManager::class);
+        $this->registerEntity(Attachment::class, IdFieldManager::class);
 
         $this->container->setDefinition(
             TypeRegistry::TAG.'.ProjectWithAttachments',
@@ -118,46 +119,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
         );
 
         $this->expectException(InvalidConnectionFieldException::class);
-        $this->expectExceptionMessageMatches('/PaginatedResults<NonExistent>/');
-
-        $this->compile();
-    }
-
-    public function testThrowsWhenReturnTypeIsNotGeneric(): void
-    {
-        $this->registerEntity(ProjectWithAttachments::class, NonGenericConnectionManager::class);
-
-        $this->container->setDefinition(
-            TypeRegistry::TAG.'.ProjectWithAttachments',
-            new Definition(ObjectType::class, [['name' => 'ProjectWithAttachments', 'fields' => []]]),
-        );
-
-        $this->expectException(InvalidConnectionFieldException::class);
-        $this->expectExceptionMessageMatches('/must have a generic return type/');
-
-        $this->compile();
-    }
-
-    public function testThrowsWhenGenericTypeWrapsNonObjectType(): void
-    {
-        $this->registerEntity(ProjectWithAttachments::class, ScalarGenericConnectionManager::class);
-
-        $this->container->setDefinition(
-            TypeRegistry::TAG.'.ProjectWithAttachments',
-            new Definition(ObjectType::class, [['name' => 'ProjectWithAttachments', 'fields' => []]]),
-        );
-
-        $this->expectException(InvalidConnectionFieldException::class);
-        $this->expectExceptionMessageMatches('/must wrap an object type/');
-
-        $this->compile();
-    }
-
-    public function testThrowsWhenParentTypeNotInContainer(): void
-    {
-        $this->registerEntity(ProjectWithAttachments::class, ConnectionFieldManager::class);
-
-        $this->expectException(InvalidConnectionFieldException::class);
+        $this->expectExceptionMessageMatches('/paginateAttachments/');
 
         $this->compile();
     }
@@ -171,6 +133,7 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
     private function registerManagers(): void
     {
         $this->registerEntity(ProjectWithAttachments::class, ConnectionFieldManager::class);
+        $this->registerEntity(Attachment::class, IdFieldManager::class);
 
         // Simulate the parent type created by GlobalObjectTypePass.
         $this->container->setDefinition(

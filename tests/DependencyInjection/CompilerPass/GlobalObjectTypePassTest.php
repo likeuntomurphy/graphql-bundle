@@ -10,6 +10,7 @@ use Likeuntomurphy\GraphQL\Exception\InvalidGlobalObjectException;
 use Likeuntomurphy\GraphQL\Exception\TypeNameCollisionException;
 use Likeuntomurphy\GraphQL\Field\NodeId;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Attachment;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Event;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
@@ -18,6 +19,7 @@ use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\WithResolver;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\CollidingProjectManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ConnectionFieldManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\EventManager;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\IdFieldManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\InvalidManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ProjectManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\TaskManager;
@@ -221,6 +223,7 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
     public function testSkipsConnectionFieldsFromTypeDefinition(): void
     {
         $this->registerEntity(ProjectWithAttachments::class, ConnectionFieldManager::class);
+        $this->registerEntity(Attachment::class, IdFieldManager::class);
 
         $this->compile();
 

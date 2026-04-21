@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Likeuntomurphy\GraphQL\Tests\Fixtures\Manager;
 
-use Likeuntomurphy\GraphQL\Attribute\AsConnection;
 use Likeuntomurphy\GraphQL\GlobalObjectInterface;
 use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\ListableManagerInterface;
@@ -23,8 +22,7 @@ class ConnectionFieldManager implements GlobalObjectManagerInterface, ListableMa
     }
 
     /** @return PaginatedResults<Attachment> */
-    #[AsConnection('attachments')]
-    public function findAttachments(ProjectWithAttachments $source, CursorPaginationParams $params): PaginatedResults
+    public function paginateAttachments(ProjectWithAttachments $source, CursorPaginationParams $params): PaginatedResults
     {
         return new PaginatedResults([], new PageInfo(false, null, null));
     }

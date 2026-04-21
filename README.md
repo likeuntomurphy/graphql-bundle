@@ -199,23 +199,34 @@ Clients access values via standard GraphQL introspection: `{ __type(name: "Payme
 
 Enums already referenced as property or argument types are picked up automatically without this attribute.
 
-### `#[AsConnection(string $fieldName)]`
+### Nested connections (convention)
 
-Marks a manager method as a nested connection field on the parent type.
+Any property on a global object whose element type is another global object becomes a nested connection field automatically — no attribute required.
 
 ```php
+use Doctrine\Common\Collections\Collection;
+
+class Widget implements GlobalObjectInterface
+{
+    /** @var Collection<int, Part> */
+    public Collection $parts;
+
+    // ...
+}
+
 class WidgetManager implements GlobalObjectManagerInterface
 {
     /** @return PaginatedResults<Part> */
-    #[AsConnection('parts')]
-    public function findParts(Widget $widget, CursorPaginationParams $params): PaginatedResults
+    public function paginateParts(Widget $widget, CursorPaginationParams $params): PaginatedResults
     {
         // ...
     }
 }
 ```
 
-This generates a `parts` field on the `Widget` type with standard cursor pagination arguments (`first`, `after`). The method's generic return type determines the child type.
+This generates a `parts` field on the `Widget` type with standard cursor pagination arguments (`first`, `after`). The manager method must be named `paginate<Property>` with the signature `(Parent, CursorPaginationParams): PaginatedResults<Child>`. A missing method is a compile-time error.
+
+The property type only needs to be a collection shape — `Collection<T>`, `list<T>`, `array<int, T>`, `iterable<T>`, etc. are all accepted; the bundle reads the element type from the docblock and doesn't care which collection class (if any) backs it.
 
 ## Validation
 
@@ -332,7 +343,7 @@ The bundle registers 8 compiler passes in order:
 4. **LocalObjectTypePass** — Resolves nested/embedded object types referenced by global objects
 5. **EnumTypePass** — Registers PHP enums as GraphQL enum types
 6. **QueryFieldPass** — Generates root query fields and connection types for listable managers
-7. **ConnectionFieldPass** — Processes `#[AsConnection]` attributes for nested connection fields
+7. **ConnectionFieldPass** — Generates nested connection fields from collection-of-global-object properties on entities
 8. **MutationFieldPass** — Generates mutation fields, input types, and result union types
 
 ## Testing

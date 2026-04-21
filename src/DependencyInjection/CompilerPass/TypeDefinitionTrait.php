@@ -17,6 +17,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\TypeInfo\Type as TypeInfoType;
+use Symfony\Component\TypeInfo\Type\CollectionType;
+use Symfony\Component\TypeInfo\Type\GenericType;
 use Symfony\Component\TypeInfo\Type\NullableType;
 use Symfony\Component\TypeInfo\TypeIdentifier;
 use Symfony\Component\TypeInfo\TypeResolver\TypeResolver;
@@ -82,6 +84,44 @@ trait TypeDefinitionTrait
         if ($attr = $rp->getAttributes(Resolver::class)[0] ?? null) {
             $fieldConfig['resolve'] = new Reference($attr->newInstance()->resolver);
         }
+    }
+
+    /**
+     * Identify properties on $rc that are collections of global-object classes.
+     *
+     * @param \ReflectionClass<object> $rc
+     * @param list<class-string>       $globalClasses
+     *
+     * @return array<string, class-string> map of property name → element class-string
+     */
+    protected function connectionProperties(\ReflectionClass $rc, array $globalClasses): array
+    {
+        $connections = [];
+
+        foreach ($rc->getProperties() as $rp) {
+            $type = $this->typeResolver()->resolve($rp);
+
+            if ($type instanceof NullableType) {
+                $type = $type->getWrappedType();
+            }
+
+            $element = $this->collectionElementType($type);
+
+            if (null === $element || !$element->isIdentifiedBy(TypeIdentifier::OBJECT)) {
+                continue;
+            }
+
+            $className = (string) $element;
+
+            if (!\in_array($className, $globalClasses, true)) {
+                continue;
+            }
+
+            /** @var class-string $className */
+            $connections[$rp->getName()] = $className;
+        }
+
+        return $connections;
     }
 
     /** @param \ReflectionClass<object> $rc */
@@ -173,5 +213,20 @@ trait TypeDefinitionTrait
         }
 
         return $fields;
+    }
+
+    private function collectionElementType(TypeInfoType $type): ?TypeInfoType
+    {
+        if ($type instanceof CollectionType) {
+            return $type->getCollectionValueType();
+        }
+
+        if ($type instanceof GenericType) {
+            $vars = $type->getVariableTypes();
+
+            return $vars[\count($vars) - 1] ?? null;
+        }
+
+        return null;
     }
 }
