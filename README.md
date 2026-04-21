@@ -425,11 +425,17 @@ vendor/bin/php-cs-fixer fix --dry-run
 
 ### Integration test pattern
 
+Build a container, register your entity with the `GlobalObject` resource tag pointing at its manager, register a denormalizer (or enable `framework.serializer` — the bundle prepends it), then compile:
+
 ```php
-use Likeuntomurphy\GraphQL\LikeuntomurphyGraphQLBundle;
 use GraphQL\GraphQL;
 use GraphQL\Type\Schema;
+use Likeuntomurphy\GraphQL\Attribute\GlobalObject;
+use Likeuntomurphy\GraphQL\LikeuntomurphyGraphQLBundle;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 
 $container = new ContainerBuilder();
 
@@ -437,12 +443,30 @@ $bundle = new LikeuntomurphyGraphQLBundle();
 $bundle->build($container);
 $bundle->getContainerExtension()?->load([], $container);
 
-// Register your manager
-$container->setDefinition(WidgetManager::class,
-    (new Definition(WidgetManager::class))
-        ->setPublic(true)
-        ->addTag(GlobalObjectManagerInterface::TAG),
+// Register the manager as a service.
+$container->setDefinition(
+    WidgetManager::class,
+    (new Definition(WidgetManager::class))->setPublic(true),
 );
+
+// Register the entity with a resource tag pointing at its manager.
+// GlobalObjectTypePass discovers entities via this tag and tags the
+// manager automatically with the appropriate capability tags.
+$container->setDefinition(
+    Widget::class,
+    (new Definition(Widget::class))->addResourceTag(GlobalObject::RESOURCE_TAG, ['manager' => WidgetManager::class]),
+);
+
+// MutationFieldResolver autowires DenormalizerInterface. In a full app
+// this comes from framework.serializer (which the bundle prepends); in
+// an isolated container test, register it directly.
+$container->setDefinition(
+    DenormalizerInterface::class,
+    new Definition(ObjectNormalizer::class),
+);
+
+// Make the schema accessible for testing.
+$container->getDefinition(Schema::class)->setPublic(true);
 
 $container->compile();
 
