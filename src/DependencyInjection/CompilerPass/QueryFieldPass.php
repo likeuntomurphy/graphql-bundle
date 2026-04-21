@@ -126,7 +126,6 @@ class QueryFieldPass implements CompilerPassInterface
             new Definition(ConnectionFieldHandler::class, [
                 new Reference($managerServiceId),
                 new Reference(ConnectionResolver::class),
-                '%likeuntomurphy_graphql.pagination.limit%',
             ]),
         );
 

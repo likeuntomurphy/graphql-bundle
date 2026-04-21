@@ -18,7 +18,6 @@ class NestedConnectionFieldHandler
     public function __construct(
         private \Closure $connection,
         private ConnectionResolver $resolver,
-        private int $limit,
     ) {
     }
 
@@ -38,16 +37,11 @@ class NestedConnectionFieldHandler
         /** @var null|string $after */
         $after = $args['after'] ?? null;
 
-        $params = new CursorPaginationParams($this->limit)
-            ->setFirst($first)
-            ->setAfter($after)
-        ;
-
         if (!\is_object($source)) {
             throw new \LogicException(\sprintf('Expected source to be an object, got %s.', get_debug_type($source)));
         }
 
-        $result = ($this->connection)($source, $params);
+        $result = ($this->connection)($source, new CursorPaginationParams($first, $after));
 
         return $this->resolver->resolve($result->results, $result->pageInfo);
     }

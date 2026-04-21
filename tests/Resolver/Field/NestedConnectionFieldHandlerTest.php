@@ -44,12 +44,12 @@ class NestedConnectionFieldHandlerTest extends TestCase
             ->method('findByParent')
             ->with(
                 self::identicalTo($source),
-                self::callback(fn (CursorPaginationParams $p) => 5 === $p->getFirst()),
+                self::callback(fn (CursorPaginationParams $p) => 5 === $p->first),
             )
             ->willReturn(new PaginatedResults([$doc], $pageInfo))
         ;
 
-        $handler = new NestedConnectionFieldHandler($manager->findByParent(...), new ConnectionResolver(), CursorPaginationParams::LIMIT);
+        $handler = new NestedConnectionFieldHandler($manager->findByParent(...), new ConnectionResolver());
         $info = $this->createStub(ResolveInfo::class);
 
         $result = $handler($source, ['first' => 5], [], $info);
@@ -72,12 +72,12 @@ class NestedConnectionFieldHandlerTest extends TestCase
             ->method('findByParent')
             ->with(
                 self::anything(),
-                self::callback(fn (CursorPaginationParams $p) => 'cursor-abc' === $p->getAfter()),
+                self::callback(fn (CursorPaginationParams $p) => 'cursor-abc' === $p->after),
             )
             ->willReturn(new PaginatedResults([], $pageInfo))
         ;
 
-        $handler = new NestedConnectionFieldHandler($manager->findByParent(...), new ConnectionResolver(), CursorPaginationParams::LIMIT);
+        $handler = new NestedConnectionFieldHandler($manager->findByParent(...), new ConnectionResolver());
         $info = $this->createStub(ResolveInfo::class);
 
         $handler(new \stdClass(), ['after' => 'cursor-abc'], [], $info);

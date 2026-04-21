@@ -100,7 +100,6 @@ class ConnectionFieldPass implements CompilerPassInterface
                     ->setFactory([\Closure::class, 'fromCallable'])
                     ->setArguments([[new Reference($managerServiceId), $method]]),
                 new Reference(ConnectionResolver::class),
-                '%likeuntomurphy_graphql.pagination.limit%',
             ]),
         );
 

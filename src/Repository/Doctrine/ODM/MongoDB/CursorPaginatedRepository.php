@@ -21,6 +21,8 @@ use MongoDB\Driver\Exception\InvalidArgumentException;
  */
 class CursorPaginatedRepository extends DocumentRepository
 {
+    public const int DEFAULT_LIMIT = 100;
+
     /**
      * @param (?callable(Builder): mixed) $filter
      *
@@ -28,19 +30,23 @@ class CursorPaginatedRepository extends DocumentRepository
      */
     public function findWithPageInfo(CursorPaginationParams $params, ?callable $filter = null): PaginatedResults
     {
-        $first = $params->getFirst();
-
-        try {
-            $afterId = new ObjectId($params->getAfter());
-        } catch (InvalidArgumentException) {
-            throw new InvalidCursorException();
-        }
+        $first = $params->first ?? self::DEFAULT_LIMIT;
 
         $qb = $this->createQueryBuilder()
             ->sort('id')
-            ->field('id')->gt($afterId)
             ->limit($first + 1)
         ;
+
+        if (null !== $params->after) {
+            try {
+                $afterId = new ObjectId($params->after);
+            } catch (InvalidArgumentException) {
+                throw new InvalidCursorException();
+            }
+
+            $qb->field('id')->gt($afterId);
+        }
+
         if ($filter) {
             $filter($qb);
         }

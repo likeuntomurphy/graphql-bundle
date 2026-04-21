@@ -14,80 +14,19 @@ use PHPUnit\Framework\TestCase;
  */
 class CursorPaginationParamsTest extends TestCase
 {
-    public function testFirstDefaultsToLimit(): void
+    public function testDefaultsToNullValues(): void
     {
         $params = new CursorPaginationParams();
 
-        $this->assertSame(CursorPaginationParams::LIMIT, $params->getFirst());
+        $this->assertNull($params->first);
+        $this->assertNull($params->after);
     }
 
-    public function testFirstClampsToLimit(): void
+    public function testAcceptsConstructorArgs(): void
     {
-        $params = new CursorPaginationParams();
-        $params->setFirst(CursorPaginationParams::LIMIT + 50);
+        $params = new CursorPaginationParams(25, '6579e4a1b3d2c1a0f8e7d6c5');
 
-        $this->assertSame(CursorPaginationParams::LIMIT, $params->getFirst());
-    }
-
-    public function testFirstAcceptsValueBelowLimit(): void
-    {
-        $params = new CursorPaginationParams();
-        $params->setFirst(10);
-
-        $this->assertSame(10, $params->getFirst());
-    }
-
-    public function testFirstTreatsNullAsDefault(): void
-    {
-        $params = new CursorPaginationParams();
-        $params->setFirst(null);
-
-        $this->assertSame(CursorPaginationParams::LIMIT, $params->getFirst());
-    }
-
-    public function testAfterDefaultsTo24ZeroCharacters(): void
-    {
-        $params = new CursorPaginationParams();
-
-        $this->assertSame(str_repeat('0', 24), $params->getAfter());
-    }
-
-    public function testAfterAcceptsValue(): void
-    {
-        $params = new CursorPaginationParams();
-        $params->setAfter('6579e4a1b3d2c1a0f8e7d6c5');
-
-        $this->assertSame('6579e4a1b3d2c1a0f8e7d6c5', $params->getAfter());
-    }
-
-    public function testAfterTreatsNullAsDefault(): void
-    {
-        $params = new CursorPaginationParams();
-        $params->setAfter(null);
-
-        $this->assertSame(CursorPaginationParams::MIN_ID, $params->getAfter());
-    }
-
-    public function testCustomLimitCapsFirst(): void
-    {
-        $params = new CursorPaginationParams(25);
-        $params->setFirst(50);
-
-        $this->assertSame(25, $params->getFirst());
-    }
-
-    public function testCustomLimitDefaultsFirst(): void
-    {
-        $params = new CursorPaginationParams(25);
-
-        $this->assertSame(25, $params->getFirst());
-    }
-
-    public function testCustomLimitAllowsValueBelow(): void
-    {
-        $params = new CursorPaginationParams(25);
-        $params->setFirst(10);
-
-        $this->assertSame(10, $params->getFirst());
+        $this->assertSame(25, $params->first);
+        $this->assertSame('6579e4a1b3d2c1a0f8e7d6c5', $params->after);
     }
 }

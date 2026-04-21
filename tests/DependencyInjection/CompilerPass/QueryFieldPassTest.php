@@ -107,7 +107,6 @@ class QueryFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertSame(ConnectionFieldHandler::class, $handler->getClass());
         $this->assertSame(ListableManager::class, (string) $handler->getArgument(0));
         $this->assertSame(ConnectionResolver::class, (string) $handler->getArgument(1));
-        $this->assertSame('%likeuntomurphy_graphql.pagination.limit%', $handler->getArgument(2));
     }
 
     public function testQueryFieldHasFirstAndAfterArgs(): void

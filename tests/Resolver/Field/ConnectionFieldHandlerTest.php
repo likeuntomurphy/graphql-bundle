@@ -41,12 +41,12 @@ class ConnectionFieldHandlerTest extends TestCase
 
         $manager->expects(self::once())
             ->method('list')
-            ->with(self::callback(fn (CursorPaginationParams $r) => 10 === $r->getFirst()))
+            ->with(self::callback(fn (CursorPaginationParams $r) => 10 === $r->first))
             ->willReturn(new PaginatedResults([$doc], $pageInfo))
         ;
 
         $resolver = $this->buildResolver();
-        $handler = new ConnectionFieldHandler($manager, $resolver, CursorPaginationParams::LIMIT);
+        $handler = new ConnectionFieldHandler($manager, $resolver);
         $info = $this->createStub(ResolveInfo::class);
 
         $result = $handler(null, ['first' => 10], [], $info);
@@ -67,12 +67,12 @@ class ConnectionFieldHandlerTest extends TestCase
 
         $manager->expects(self::once())
             ->method('list')
-            ->with(self::callback(fn (CursorPaginationParams $r) => 'cursor123' === $r->getAfter()))
+            ->with(self::callback(fn (CursorPaginationParams $r) => 'cursor123' === $r->after))
             ->willReturn(new PaginatedResults([], $pageInfo))
         ;
 
         $resolver = $this->buildResolver();
-        $handler = new ConnectionFieldHandler($manager, $resolver, CursorPaginationParams::LIMIT);
+        $handler = new ConnectionFieldHandler($manager, $resolver);
         $info = $this->createStub(ResolveInfo::class);
 
         $handler(null, ['after' => 'cursor123'], [], $info);

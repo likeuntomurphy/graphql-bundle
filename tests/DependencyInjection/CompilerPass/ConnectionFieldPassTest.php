@@ -97,7 +97,6 @@ class ConnectionFieldPassTest extends AbstractCompilerPassTestCase
         $this->assertSame('findAttachments', $callable[1]);
 
         $this->assertSame(ConnectionResolver::class, (string) $handler->getArgument(1));
-        $this->assertSame('%likeuntomurphy_graphql.pagination.limit%', $handler->getArgument(2));
     }
 
     public function testDoesNothingWithNoConnectionFieldManagers(): void

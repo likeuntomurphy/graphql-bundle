@@ -14,10 +14,7 @@ class GraphQLExtension extends Extension implements PrependExtensionInterface
 {
     public function load(array $configs, ContainerBuilder $container): void
     {
-        /** @var array{pagination: array{limit: int}} $config */
-        $config = $this->processConfiguration(new Configuration(), $configs);
-
-        $container->setParameter('likeuntomurphy_graphql.pagination.limit', $config['pagination']['limit']);
+        $this->processConfiguration(new Configuration(), $configs);
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
         $loader->load('services.yaml');

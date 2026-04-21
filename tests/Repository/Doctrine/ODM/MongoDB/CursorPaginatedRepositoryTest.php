@@ -110,10 +110,7 @@ class CursorPaginatedRepositoryTest extends TestCase
 
         $this->expectException(InvalidCursorException::class);
 
-        $params = (new CursorPaginationParams(5))
-            ->setFirst(5)
-            ->setAfter('not-a-valid-objectid')
-        ;
+        $params = new CursorPaginationParams(5, 'not-a-valid-objectid');
 
         $repo->findWithPageInfo($params);
     }
@@ -133,10 +130,7 @@ class CursorPaginatedRepositoryTest extends TestCase
 
     private function params(int $first): CursorPaginationParams
     {
-        return (new CursorPaginationParams($first))
-            ->setFirst($first)
-            ->setAfter(self::AFTER)
-        ;
+        return new CursorPaginationParams($first, self::AFTER);
     }
 
     /**

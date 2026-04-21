@@ -14,7 +14,6 @@ class ConnectionFieldHandler
     public function __construct(
         private ListableManagerInterface $manager,
         private ConnectionResolver $resolver,
-        private int $limit,
     ) {
     }
 
@@ -34,12 +33,7 @@ class ConnectionFieldHandler
         /** @var null|string $after */
         $after = $args['after'] ?? null;
 
-        $params = new CursorPaginationParams($this->limit)
-            ->setFirst($first)
-            ->setAfter($after)
-        ;
-
-        $result = $this->manager->list($params, null);
+        $result = $this->manager->list(new CursorPaginationParams($first, $after), null);
 
         return $this->resolver->resolve($result->results, $result->pageInfo);
     }
