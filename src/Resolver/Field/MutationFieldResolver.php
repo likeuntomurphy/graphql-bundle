@@ -12,13 +12,12 @@ use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Model\NodeNotFound;
 use Likeuntomurphy\GraphQL\Model\ValidationErrorList;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
-use Likeuntomurphy\GraphQL\ValidationGroupsAwareInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
 class MutationFieldResolver
@@ -32,7 +31,6 @@ class MutationFieldResolver
     public function __construct(
         private NodeIdResolver $nodeIdResolver,
         private DenormalizerInterface $denormalizer,
-        private ValidatorInterface $validator,
         #[AutowireLocator(GlobalObjectTypePass::CREATABLE_MANAGER_TAG, indexAttribute: 'key')] private ServiceProviderInterface $creatableManagers,
         #[AutowireLocator(GlobalObjectTypePass::UPDATABLE_MANAGER_TAG, indexAttribute: 'key')] private ServiceProviderInterface $updatableManagers,
         #[AutowireLocator(GlobalObjectTypePass::DELETABLE_MANAGER_TAG, indexAttribute: 'key')] private ServiceProviderInterface $deletableManagers,
@@ -73,15 +71,11 @@ class MutationFieldResolver
         /** @var object $document */
         $document = $this->denormalizer->denormalize($args, $entityClass, context: [AbstractNormalizer::OBJECT_TO_POPULATE => new $entityClass()]);
 
-        $groups = $manager instanceof ValidationGroupsAwareInterface
-            ? $manager->getValidationGroups('create', $document)
-            : ['Default', 'Create'];
-
-        if ($errors = $this->validate($document, $groups)) {
-            return $errors;
+        try {
+            return $manager->create($document);
+        } catch (ValidationFailedException $e) {
+            return ValidationErrorList::fromConstraintViolationList($e->getViolations());
         }
-
-        return $manager->create($document);
     }
 
     /**
@@ -110,15 +104,11 @@ class MutationFieldResolver
 
         $this->denormalizer->denormalize($args, $entityClass, context: [AbstractNormalizer::OBJECT_TO_POPULATE => $document]);
 
-        $groups = $manager instanceof ValidationGroupsAwareInterface
-            ? $manager->getValidationGroups('update', $document)
-            : ['Default', 'Update'];
-
-        if ($errors = $this->validate($document, $groups)) {
-            return $errors;
+        try {
+            return $manager->update($document);
+        } catch (ValidationFailedException $e) {
+            return ValidationErrorList::fromConstraintViolationList($e->getViolations());
         }
-
-        return $manager->update($document);
     }
 
     /** @param array<string, mixed> $args */
@@ -187,18 +177,6 @@ class MutationFieldResolver
         }
 
         return [$args, $violations];
-    }
-
-    /** @param list<string> $groups */
-    private function validate(object $document, array $groups): ?ValidationErrorList
-    {
-        $violations = $this->validator->validate($document, null, $groups);
-
-        if (0 === \count($violations)) {
-            return null;
-        }
-
-        return ValidationErrorList::fromConstraintViolationList($violations);
     }
 
     /**

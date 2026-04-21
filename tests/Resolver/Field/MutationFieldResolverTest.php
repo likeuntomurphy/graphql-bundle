@@ -18,7 +18,6 @@ use Likeuntomurphy\GraphQL\Tests\Fixtures\Enum\Tier;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\StubDocument;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\WidgetManagerStub;
 use Likeuntomurphy\GraphQL\TypeRegistry;
-use Likeuntomurphy\GraphQL\ValidationGroupsAwareInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -26,8 +25,7 @@ use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
-use Symfony\Component\Validator\Validation;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
 /**
@@ -119,22 +117,20 @@ class MutationFieldResolverTest extends TestCase
         $this->assertSame($existing, $result);
     }
 
-    public function testReturnsValidationErrorListWhenValidatorReturnsViolationsOnCreate(): void
+    #[AllowMockObjectsWithoutExpectations]
+    public function testReturnsValidationErrorListWhenManagerThrowsOnCreate(): void
     {
         $violations = new ConstraintViolationList([
             new ConstraintViolation('must not be blank', '', [], null, 'name', null),
         ]);
 
-        $validator = $this->createStub(ValidatorInterface::class);
-        $validator->method('validate')->willReturn($violations);
-
         $manager = $this->getMockBuilder(WidgetManagerStub::class)
             ->onlyMethods(['read', 'create', 'update', 'delete'])
             ->getMock()
         ;
-        $manager->expects(self::never())->method('create');
+        $manager->method('create')->willThrowException(new ValidationFailedException(new StubDocument(), $violations));
 
-        $resolver = $this->buildResolver($manager, validator: $validator);
+        $resolver = $this->buildResolver($manager);
 
         $result = $resolver->resolve('create', 'Widget', StubDocument::class, ['name' => '']);
 
@@ -143,14 +139,12 @@ class MutationFieldResolverTest extends TestCase
         $this->assertSame('name', $result->errors[0]->path);
     }
 
-    public function testReturnsValidationErrorListWhenValidatorReturnsViolationsOnUpdate(): void
+    #[AllowMockObjectsWithoutExpectations]
+    public function testReturnsValidationErrorListWhenManagerThrowsOnUpdate(): void
     {
         $violations = new ConstraintViolationList([
             new ConstraintViolation('too short', '', [], null, 'name', null),
         ]);
-
-        $validator = $this->createStub(ValidatorInterface::class);
-        $validator->method('validate')->willReturn($violations);
 
         $existing = new \stdClass();
 
@@ -159,9 +153,9 @@ class MutationFieldResolverTest extends TestCase
             ->getMock()
         ;
         $manager->method('read')->willReturn($existing);
-        $manager->expects(self::never())->method('update');
+        $manager->method('update')->willThrowException(new ValidationFailedException($existing, $violations));
 
-        $resolver = $this->buildResolver($manager, validator: $validator);
+        $resolver = $this->buildResolver($manager);
 
         $result = $resolver->resolve('update', 'Widget', StubDocument::class, ['id' => base64_encode('Widget:42'), 'name' => 'x']);
 
@@ -323,77 +317,6 @@ class MutationFieldResolverTest extends TestCase
         $resolver->resolve('create', 'Widget', StubDocument::class, ['nested' => ['color' => Color::Green]]);
     }
 
-    #[AllowMockObjectsWithoutExpectations]
-    public function testCreateValidatesWithDefaultAndCreateGroups(): void
-    {
-        $validator = $this->createMock(ValidatorInterface::class);
-        $validator->expects(self::once())
-            ->method('validate')
-            ->with(self::isInstanceOf(StubDocument::class), null, ['Default', 'Create'])
-            ->willReturn(new ConstraintViolationList())
-        ;
-
-        $manager = $this->getMockBuilder(WidgetManagerStub::class)
-            ->onlyMethods(['read', 'create', 'update', 'delete'])
-            ->getMock()
-        ;
-        $manager->method('create')->willReturnArgument(0);
-
-        $resolver = $this->buildResolver($manager, validator: $validator);
-
-        $resolver->resolve('create', 'Widget', StubDocument::class, ['name' => 'foo']);
-    }
-
-    #[AllowMockObjectsWithoutExpectations]
-    public function testUpdateValidatesWithDefaultAndUpdateGroups(): void
-    {
-        $validator = $this->createMock(ValidatorInterface::class);
-        $validator->expects(self::once())
-            ->method('validate')
-            ->with(self::isInstanceOf(StubDocument::class), null, ['Default', 'Update'])
-            ->willReturn(new ConstraintViolationList())
-        ;
-
-        $existing = new StubDocument();
-        $manager = $this->getMockBuilder(WidgetManagerStub::class)
-            ->onlyMethods(['read', 'create', 'update', 'delete'])
-            ->getMock()
-        ;
-        $manager->method('read')->willReturn($existing);
-        $manager->method('update')->willReturnArgument(0);
-
-        $resolver = $this->buildResolver($manager, validator: $validator);
-
-        $resolver->resolve('update', 'Widget', StubDocument::class, ['id' => base64_encode('Widget:42'), 'name' => 'foo']);
-    }
-
-    #[AllowMockObjectsWithoutExpectations]
-    public function testGroupsAwareManagerOverridesConvention(): void
-    {
-        $validator = $this->createMock(ValidatorInterface::class);
-        $validator->expects(self::once())
-            ->method('validate')
-            ->with(self::isInstanceOf(StubDocument::class), null, ['Default', 'Draft'])
-            ->willReturn(new ConstraintViolationList())
-        ;
-
-        $manager = new class extends WidgetManagerStub implements ValidationGroupsAwareInterface {
-            public function getValidationGroups(string $method, object $document): array
-            {
-                return ['Default', 'Draft'];
-            }
-
-            public function create(object $document): object
-            {
-                return $document;
-            }
-        };
-
-        $resolver = $this->buildResolver($manager, validator: $validator);
-
-        $resolver->resolve('create', 'Widget', StubDocument::class, ['name' => 'foo']);
-    }
-
     public function testThrowsOnUnknownMethod(): void
     {
         $resolver = $this->buildResolver(new WidgetManagerStub());
@@ -407,12 +330,10 @@ class MutationFieldResolverTest extends TestCase
     private function buildResolver(
         WidgetManagerStub $manager,
         ?DenormalizerInterface $denormalizer = null,
-        ?ValidatorInterface $validator = null,
     ): MutationFieldResolver {
         return new MutationFieldResolver(
             new NodeIdResolver($this->registry, new Base64NodeIdCodec()),
             $denormalizer ?? new ObjectNormalizer(),
-            $validator ?? Validation::createValidator(),
             $this->managerProvider($manager),
             $this->managerProvider($manager),
             $this->managerProvider($manager),
@@ -439,7 +360,6 @@ class MutationFieldResolverTest extends TestCase
         return new MutationFieldResolver(
             new NodeIdResolver($this->registry, new Base64NodeIdCodec()),
             new ObjectNormalizer(),
-            Validation::createValidator(),
             $this->managerProvider($manager),
             $this->managerProvider($manager),
             $this->managerProvider($manager),

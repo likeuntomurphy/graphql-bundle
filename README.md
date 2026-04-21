@@ -74,7 +74,7 @@ class Widget implements GlobalObjectInterface
 
 The `#[GlobalObject]` attribute is the discovery entry point — the bundle finds entities via Symfony 7.3 resource-tag autoconfiguration and links each to its manager. Entities are never instantiated by the container.
 
-Public properties become GraphQL fields. Nullable properties become nullable fields. The `id` field is automatically replaced with a Relay-style global ID (`base64("TypeName:rawId")`). The same properties are reflected as input fields for create and update mutations — readonly, excluded, and `id` properties are filtered out of mutation args. Declare Symfony Validator constraints on the document's properties; the resolver validates the populated document before handing it to the manager.
+Public properties become GraphQL fields. Nullable properties become nullable fields. The `id` field is automatically replaced with a Relay-style global ID (`base64("TypeName:rawId")`). The same properties are reflected as input fields for create and update mutations — readonly, excluded, and `id` properties are filtered out of mutation args.
 
 ### Manager
 
@@ -217,37 +217,7 @@ This generates a `parts` field on the `Widget` type with standard cursor paginat
 
 ## Validation
 
-Mutations validate the denormalized entity before calling the manager. Group selection follows Symfony conventions:
-
-- `create` mutations apply groups `['Default', 'Create']`
-- `update` mutations apply groups `['Default', 'Update']`
-
-Tag constraints to target a specific method:
-
-```php
-class Widget
-{
-    #[Assert\NotBlank]                         // always
-    public string $name;
-
-    #[Assert\NotBlank(groups: ['Create'])]     // create only
-    public string $sku;
-}
-```
-
-For conditional groups (e.g., based on entity state), implement `ValidationGroupsAwareInterface` on the manager:
-
-```php
-use Likeuntomurphy\GraphQL\ValidationGroupsAwareInterface;
-
-class WidgetManager implements GlobalObjectManagerInterface, CreatableManagerInterface, ValidationGroupsAwareInterface
-{
-    public function getValidationGroups(string $method, object $document): array
-    {
-        return $document->isDraft ? ['Default', 'Draft'] : ['Default', ucfirst($method)];
-    }
-}
-```
+Validation is the manager's responsibility. Managers that want to reject invalid state throw `Symfony\Component\Validator\Exception\ValidationFailedException`; the resolver catches it and returns a `ValidationErrorList` in the mutation response. The bundle takes no opinion on which groups to apply or when — that's the manager's call, operation by operation.
 
 ## Mutation results
 
