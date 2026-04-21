@@ -22,14 +22,25 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-composer-
+
       - name: Install dependencies
         run: composer update --no-interaction --prefer-dist
 
       - name: PHPStan
-        run: vendor/bin/phpstan analyse --no-progress --memory-limit=256M
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
       - name: PHP CS Fixer
-        run: vendor/bin/php-cs-fixer fix src --dry-run --diff
+        run: vendor/bin/php-cs-fixer check --diff
 
       - name: PHPUnit
-        run: vendor/bin/phpunit tests/
+        run: vendor/bin/phpunit
