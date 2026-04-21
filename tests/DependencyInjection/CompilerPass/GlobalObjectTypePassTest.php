@@ -16,6 +16,7 @@ use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Project;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\ProjectWithAttachments;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\Task;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\WithResolver;
+use Likeuntomurphy\GraphQL\Tests\Fixtures\GlobalDocument\WithTypeOverride;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\CollidingProjectManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\ConnectionFieldManager;
 use Likeuntomurphy\GraphQL\Tests\Fixtures\Manager\EventManager;
@@ -160,6 +161,25 @@ class GlobalObjectTypePassTest extends AbstractCompilerPassTestCase
 
         $this->assertInstanceOf(Reference::class, $config['fields']['secret']['resolve']);
         $this->assertSame('App\Resolver\SecretResolver', (string) $config['fields']['secret']['resolve']);
+    }
+
+    public function testTypeAttributeOverridesPrimitiveMapping(): void
+    {
+        $this->registerEntity(WithTypeOverride::class, IdFieldManager::class);
+
+        $this->compile();
+
+        $config = $this->container->findDefinition(TypeRegistry::TAG.'.WithTypeOverride')->getArgument(0);
+
+        $this->assertSame(
+            TypeRegistry::TAG.'.Email.'.TypeRegistry::NON_NULL_SUFFIX,
+            (string) $config['fields']['email']['type'],
+        );
+
+        $this->assertSame(
+            TypeRegistry::STRING.'.'.TypeRegistry::NON_NULL_SUFFIX,
+            (string) $config['fields']['plainString']['type'],
+        );
     }
 
     public function testObjectPropertyResolvesToTypeReference(): void

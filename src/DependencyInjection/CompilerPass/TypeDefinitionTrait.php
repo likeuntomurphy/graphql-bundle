@@ -10,6 +10,7 @@ use GraphQL\Type\Definition\ObjectType;
 use Likeuntomurphy\GraphQL\Attribute\Description;
 use Likeuntomurphy\GraphQL\Attribute\Exclude;
 use Likeuntomurphy\GraphQL\Attribute\Resolver;
+use Likeuntomurphy\GraphQL\Attribute\Type as TypeAttribute;
 use Likeuntomurphy\GraphQL\Exception\TypeNameCollisionException;
 use Likeuntomurphy\GraphQL\Exception\UnsupportedTypeException;
 use Likeuntomurphy\GraphQL\TypeRegistry;
@@ -195,7 +196,9 @@ trait TypeDefinitionTrait
                 $type = $type->getWrappedType();
             }
 
-            if ($type->isIdentifiedBy(TypeIdentifier::OBJECT)) {
+            if ($typeAttr = $rp->getAttributes(TypeAttribute::class)[0] ?? null) {
+                $ref = new Reference(TypeRegistry::TAG.'.'.$typeAttr->newInstance()->name);
+            } elseif ($type->isIdentifiedBy(TypeIdentifier::OBJECT)) {
                 /** @var class-string $className */
                 $className = (string) $type;
                 $objectRc = new \ReflectionClass($className);

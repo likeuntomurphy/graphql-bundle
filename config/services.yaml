@@ -12,6 +12,22 @@ services:
     alias: 'Likeuntomurphy\GraphQL\Type\DateTime'
     public: true
 
+  graphql.type.Email:
+    alias: 'Likeuntomurphy\GraphQL\Type\Email'
+    public: true
+
+  graphql.type.Url:
+    alias: 'Likeuntomurphy\GraphQL\Type\Url'
+    public: true
+
+  graphql.type.Uuid:
+    alias: 'Likeuntomurphy\GraphQL\Type\Uuid'
+    public: true
+
+  graphql.type.NonEmptyString:
+    alias: 'Likeuntomurphy\GraphQL\Type\NonEmptyString'
+    public: true
+
   Likeuntomurphy\GraphQL\Resolver\Field\DefaultFieldResolverInterface:
     alias: 'Likeuntomurphy\GraphQL\DefaultFieldResolver'
 

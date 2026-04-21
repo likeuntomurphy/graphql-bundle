@@ -159,6 +159,75 @@ class Attachment implements GlobalObjectInterface
 
 On a `createAttachment` mutation, clients send `projectId: ID!`; the bundle resolves it to a `Project` instance via `ProjectManager::read()` and sets `$attachment->project`. If the ID doesn't resolve, the mutation returns a `ValidationErrorList` with a constraint violation on the property.
 
+### `#[Type(string $name)]`
+
+Overrides the GraphQL type for a property, replacing the default primitive mapping or object-reference resolution. The name must match a type registered with `graphql.type` — either one of the bundle's built-in scalars (`Email`, `Url`, `Uuid`, `NonEmptyString`, `DateTime`) or a custom type the app has registered.
+
+```php
+use Likeuntomurphy\GraphQL\Attribute\Type;
+
+class User implements GlobalObjectInterface
+{
+    #[Type('Email')]
+    public string $email;
+
+    #[Type('Url')]
+    public ?string $website;
+
+    #[Type('NonEmptyString')]
+    public string $displayName;
+}
+```
+
+The PHP type stays what it was (`string`, `?string`); only the schema's advertised scalar changes. This is the seam for stricter input validation at the GraphQL boundary — malformed values are rejected by the scalar before any resolver runs.
+
+### Built-in scalars
+
+The bundle ships a small opinionated set of scalars beyond GraphQL's standard `Int`, `Float`, `String`, `Boolean`, and `ID`:
+
+- `DateTime` — ISO-8601 date/time, used automatically for `\DateTimeImmutable` properties.
+- `Email` — RFC 5322 email address.
+- `Url` — RFC 3986 URL.
+- `Uuid` — RFC 9562 UUID.
+- `NonEmptyString` — non-empty, non-whitespace string.
+
+Reference any of them with `#[Type('Email')]` (etc.) on a `string` property. Apps register additional scalars by placing them in their own type namespace tagged with `graphql.type` and reference them through the same attribute.
+
+The shipped scalars validate with native PHP (`filter_var`, regex, `trim`) to stay dependency-free, and serve as models for your own. Because registered types are ordinary Symfony services, a custom scalar can inject anything it needs — `ValidatorInterface` to match a specific `Assert\Email` mode, a domain service, a repository, whatever:
+
+```php
+use GraphQL\Error\Error;
+use GraphQL\Type\Definition\ScalarType;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+
+class StrictEmail extends ScalarType
+{
+    public string $name = 'StrictEmail';
+
+    public function __construct(private ValidatorInterface $validator) {}
+
+    public function parseValue(mixed $value): string
+    {
+        if (!is_string($value)) {
+            throw new Error('StrictEmail must be a string.');
+        }
+
+        $violations = $this->validator->validate($value, new Assert\Email(mode: Assert\Email::VALIDATION_MODE_STRICT));
+
+        if (count($violations) > 0) {
+            throw new Error($violations[0]->getMessage());
+        }
+
+        return $value;
+    }
+
+    // serialize() and parseLiteral() follow the same shape as Email::class.
+}
+```
+
+Autowiring handles the injection. Use `#[Type('StrictEmail')]` on properties where you need it.
+
 ### `#[Resolver(string $resolver)]`
 
 Assigns a custom field resolver to a property.
