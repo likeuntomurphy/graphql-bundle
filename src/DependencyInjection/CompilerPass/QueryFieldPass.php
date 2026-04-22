@@ -28,6 +28,20 @@ use Symfony\Component\String\Inflector\EnglishInflector;
 
 use function Symfony\Component\String\s;
 
+/**
+ * Generates root-level query fields: Relay Edge/Connection types for every global object, plus
+ * a pluralized `things` query field when the manager implements {@see ListableManagerInterface}.
+ *
+ * Reads: resources tagged {@see GlobalObject::RESOURCE_TAG}.
+ * Writes:
+ *  - `graphql.type.{TypeName}Edge` and `graphql.type.{TypeName}Connection` ObjectTypes.
+ *  - `graphql.query.field.{fieldName}` FieldDefinitions tagged {@see Query::FIELD_TAG}.
+ *
+ * Depends on {@see GlobalObjectTypePass} — the Edge's `node` field references the parent
+ * `graphql.type.{TypeName}` service which that pass creates.
+ * Consumed by: {@see ConnectionFieldPass}, which wires nested connection fields pointing at
+ * the `{TypeName}Connection` services registered here.
+ */
 class QueryFieldPass implements CompilerPassInterface
 {
     private EnglishInflector $inflector;

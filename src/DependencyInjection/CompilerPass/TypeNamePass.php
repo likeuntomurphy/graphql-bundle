@@ -10,6 +10,15 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\AutoconfigureFailedException;
 
+/**
+ * Normalizes every {@see TypeRegistry::TAG}-tagged service to carry a `name` attribute,
+ * derived from the short class name or an explicit {@see Name} attribute.
+ *
+ * Reads: services tagged {@see TypeRegistry::TAG} without a `name` attribute.
+ * Writes: replaces the tag on those services with one that has `name` set.
+ * Consumed by: every subsequent pass — later passes may assume a populated `name` when
+ * checking for type-name collisions via {@see TypeDefinitionTrait::assertUniqueTypeName()}.
+ */
 class TypeNamePass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void

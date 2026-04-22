@@ -24,6 +24,27 @@ use Symfony\Component\TypeInfo\Type\NullableType;
 use Symfony\Component\TypeInfo\TypeIdentifier;
 use Symfony\Component\TypeInfo\TypeResolver\TypeResolver;
 
+/**
+ * Shared reflection → GraphQL type-graph translation used by the object/field compiler passes.
+ *
+ * Two patterns live here that are worth calling out:
+ *
+ * 1. **Stub-and-finalize.** When a pass encounters a nested class it has not seen before, it
+ *    registers a placeholder {@see Definition} tagged with a `local => true` or `enum => true`
+ *    marker (see {@see GlobalObjectTypePass::ensureLocalObjectType()} and
+ *    {@see self::ensureEnumType()}). A later pass finds the marker and replaces the stub with
+ *    the fully configured type. This lets earlier passes emit references without needing to
+ *    fully resolve the downstream type graph — the stub makes the service ID valid so
+ *    {@see Reference} resolves, and finalization happens in topological order.
+ *
+ * 2. **Idempotent registration.** Every `ensure*` / `resolve*` helper first checks whether
+ *    the target service ID is already present; this keeps recursive traversal of the reflected
+ *    type graph safe (cycles return the existing {@see Reference} instead of recursing).
+ *
+ * Field resolution runs callbacks supplied by the calling pass (see the `$objectHandler`
+ * parameter of {@see self::resolveObjectFields()}) so the same traversal logic produces stubs
+ * in one pass and fully configured types in another.
+ */
 trait TypeDefinitionTrait
 {
     private const array SCALAR_TYPE_MAP = [

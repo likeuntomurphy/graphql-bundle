@@ -16,6 +16,18 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
+/**
+ * Adds nested connection fields (e.g. `Project.attachments`) to existing parent ObjectTypes by
+ * pairing each cross-global collection property with a `paginate{Property}` manager method.
+ *
+ * Reads: resources tagged {@see GlobalObject::RESOURCE_TAG}; parent types at
+ * `graphql.type.{TypeName}`; child `{ChildName}Connection` types.
+ * Writes: mutates the parent ObjectType's `fields` config in place and registers
+ * `graphql.connection.handler.{Parent}.{field}` handler services.
+ *
+ * Depends on {@see GlobalObjectTypePass} (parent ObjectType must exist and be mutable) and
+ * {@see QueryFieldPass} (Connection child types must already be registered).
+ */
 class ConnectionFieldPass implements CompilerPassInterface
 {
     use TypeDefinitionTrait;

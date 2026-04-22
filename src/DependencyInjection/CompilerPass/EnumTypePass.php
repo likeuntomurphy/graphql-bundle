@@ -11,6 +11,19 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 
+/**
+ * Materializes enum types: finalizes stubs other passes left behind with `enum => true` tags,
+ * and registers any `#[GlobalEnum]`-tagged enums not yet referenced by a field.
+ *
+ * Reads: services tagged {@see TypeRegistry::TAG} with `enum => true`; resources tagged
+ * {@see GlobalEnum::RESOURCE_TAG}.
+ * Writes: replaces stubs with {@see PhpEnumType} definitions and registers any missing
+ * global enums at `graphql.type.{Name}`.
+ *
+ * Runs before {@see MutationFieldPass}; that pass has its own fallback path
+ * ({@see MutationFieldPass::ensureEnumTypeResolved()}) for enums first discovered through
+ * mutation input and therefore never stubbed.
+ */
 class EnumTypePass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void

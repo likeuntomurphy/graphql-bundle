@@ -11,6 +11,17 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
+/**
+ * Finalizes the stub ObjectType definitions that {@see GlobalObjectTypePass} left behind for
+ * nested (non-global) classes, and recursively materializes any further stubs they imply.
+ *
+ * Reads: services tagged {@see TypeRegistry::TAG} whose tag carries `local => true` and `class`.
+ * Writes: replaces each stub with a fully configured ObjectType; may register additional local
+ * ObjectTypes discovered during recursive field resolution.
+ *
+ * Depends on {@see GlobalObjectTypePass} to have produced the stubs; running first is a silent
+ * no-op because no tags carry the `local` marker yet.
+ */
 class LocalObjectTypePass implements CompilerPassInterface
 {
     use TypeDefinitionTrait;

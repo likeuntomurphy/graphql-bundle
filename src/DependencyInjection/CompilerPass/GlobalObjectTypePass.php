@@ -15,6 +15,7 @@ use Likeuntomurphy\GraphQL\GlobalObjectManagerInterface;
 use Likeuntomurphy\GraphQL\Model\NodeNotFound;
 use Likeuntomurphy\GraphQL\Model\ValidationError;
 use Likeuntomurphy\GraphQL\Model\ValidationErrorList;
+use Likeuntomurphy\GraphQL\Resolver\Type\ObjectTypeResolver;
 use Likeuntomurphy\GraphQL\Type\NodeInterface;
 use Likeuntomurphy\GraphQL\TypeRegistry;
 use Likeuntomurphy\GraphQL\UpdatableManagerInterface;
@@ -23,6 +24,21 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 
+/**
+ * Builds the ObjectType for each `#[GlobalObject]`-marked entity and wires its manager.
+ *
+ * Reads: resources tagged {@see GlobalObject::RESOURCE_TAG}; the `manager` attribute names the manager class.
+ * Writes:
+ *  - `graphql.type.{TypeName}` ObjectType services tagged {@see TypeRegistry::TAG}.
+ *  - Narrow capability tags on the manager ({@see GlobalObjectManagerInterface::TAG} plus
+ *    CREATABLE/UPDATABLE/DELETABLE variants) so resolvers can autowire them by role.
+ *  - Parameter `likeuntomurphy_graphql.type_class_map` — entity class → type name — consumed at
+ *    runtime by {@see ObjectTypeResolver}.
+ *  - Stub ObjectType definitions for nested classes (tagged `local => true`) left for
+ *    {@see LocalObjectTypePass} to finalize.
+ *
+ * Depends on {@see TypeNamePass} having run so uniqueness checks see complete `name` attributes.
+ */
 class GlobalObjectTypePass implements CompilerPassInterface
 {
     use TypeDefinitionTrait;

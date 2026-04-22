@@ -30,6 +30,23 @@ use Symfony\Component\TypeInfo\TypeIdentifier;
 
 use function Symfony\Component\String\s;
 
+/**
+ * Generates create/update/delete mutation fields for each global object whose manager
+ * implements the corresponding capability interface, plus the `{TypeName}MutationResult`
+ * union that wraps successful, validation-failed, and not-found outcomes.
+ *
+ * Reads: resources tagged {@see GlobalObject::RESOURCE_TAG}; relies on
+ * {@see GlobalObjectTypePass} having set `likeuntomurphy_graphql.type_class_map` so
+ * {@see ObjectTypeResolver} can resolve union members at runtime.
+ * Writes:
+ *  - `graphql.mutation.field.{name}` FieldDefinitions tagged {@see Mutation::FIELD_TAG}.
+ *  - `graphql.mutation.handler.{name}` handler services.
+ *  - `graphql.type.{TypeName}MutationResult` UnionTypes; `{Name}Input` InputObjectTypes for
+ *    nested non-global objects.
+ *
+ * Runs after {@see EnumTypePass}, but {@see self::ensureEnumTypeResolved()} can still
+ * register a {@see PhpEnumType} directly for enums first discovered through mutation input.
+ */
 class MutationFieldPass implements CompilerPassInterface
 {
     use TypeDefinitionTrait;
